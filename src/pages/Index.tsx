@@ -50,7 +50,7 @@ const Index = () => {
           />
           <StatsCard
             title="إجمالي الإيرادات"
-            value={`${stats.totalRevenue.toLocaleString()} ر.س`}
+            value={`$${stats.totalRevenue.toLocaleString()}`}
             change="+12% من الشهر الماضي"
             changeType="positive"
             icon={TrendingUp}
@@ -58,7 +58,7 @@ const Index = () => {
           />
           <StatsCard
             title="رصيد الخزينة"
-            value={`${totalBalance.toLocaleString()} ر.س`}
+            value={`$${totalBalance.toLocaleString()}`}
             icon={Landmark}
             iconColor="bg-chart-5/10 text-chart-5"
           />
