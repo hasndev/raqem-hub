@@ -1,11 +1,9 @@
-import { useState, useEffect } from "react";
 import {
   FolderKanban,
   Users,
-  Building2,
   TrendingUp,
+  TrendingDown,
   Landmark,
-  UserCheck,
   RefreshCw,
 } from "lucide-react";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
@@ -17,10 +15,9 @@ import { useAppStore } from "@/context/StoreContext";
 import { Button } from "@/components/ui/button";
 
 const Index = () => {
-  const { projects, clients, departments, employees, getStats, treasuryAccounts, loading, refetch } = useAppStore();
+  const { projects, clients, getStats, treasuryAccounts, loading, refetch } = useAppStore();
   const stats = getStats();
   const totalBalance = treasuryAccounts.reduce((s, a) => s + Number(a.balance), 0);
-  const activeEmployees = employees.filter(e => e.status === "active").length;
 
   return (
     <DashboardLayout>
@@ -43,8 +40,8 @@ const Index = () => {
           </Button>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        {/* Stats Grid - 5 Essential Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <StatsCard
             title="إجمالي المشاريع"
             value={projects.length}
@@ -54,36 +51,30 @@ const Index = () => {
             iconColor="bg-primary/10 text-primary"
           />
           <StatsCard
-            title="العملاء"
+            title="إجمالي العملاء"
             value={clients.length}
             icon={Users}
             iconColor="bg-success/10 text-success"
           />
           <StatsCard
-            title="الأقسام"
-            value={departments.length}
-            icon={Building2}
-            iconColor="bg-warning/10 text-warning"
-          />
-          <StatsCard
-            title="الموظفين النشطين"
-            value={activeEmployees}
-            icon={UserCheck}
-            iconColor="bg-chart-3/10 text-chart-3"
-          />
-          <StatsCard
             title="إجمالي الإيرادات"
             value={`$${stats.totalRevenue.toLocaleString()}`}
-            change={stats.totalExpenses > 0 ? `-$${stats.totalExpenses.toLocaleString()} مصروفات` : undefined}
-            changeType={stats.totalRevenue > stats.totalExpenses ? "positive" : "negative"}
+            changeType="positive"
             icon={TrendingUp}
-            iconColor="bg-chart-4/10 text-chart-4"
+            iconColor="bg-success/10 text-success"
           />
           <StatsCard
-            title="رصيد الخزينة"
+            title="إجمالي المصروفات"
+            value={`$${stats.totalExpenses.toLocaleString()}`}
+            changeType="negative"
+            icon={TrendingDown}
+            iconColor="bg-destructive/10 text-destructive"
+          />
+          <StatsCard
+            title="المتبقي في الخزينة"
             value={`$${totalBalance.toLocaleString()}`}
             icon={Landmark}
-            iconColor="bg-chart-5/10 text-chart-5"
+            iconColor="bg-primary/10 text-primary"
           />
         </div>
 

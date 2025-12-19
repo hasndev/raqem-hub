@@ -50,17 +50,17 @@ export function DashboardSidebar() {
         collapsed ? "w-20" : "w-64"
       }`}
     >
-      {/* Logo */}
-      <div className="p-6 flex items-center justify-center border-b border-sidebar-border">
+      {/* Logo - Fixed */}
+      <div className="p-4 flex items-center justify-center border-b border-sidebar-border shrink-0">
         <img
           src={raqeemLogo}
           alt="رقيم"
-          className={`transition-all duration-300 ${collapsed ? "w-10" : "w-32"}`}
+          className={`transition-all duration-300 ${collapsed ? "w-8" : "w-24"}`}
         />
       </div>
 
-      {/* Menu */}
-      <nav className="flex-1 py-6 px-3 overflow-y-auto">
+      {/* Menu - Scrollable */}
+      <nav className="flex-1 py-4 px-3 overflow-y-auto min-h-0">
         <ul className="space-y-2">
           {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
