@@ -703,6 +703,7 @@ export type Database = {
       }
       transactions: {
         Row: {
+          account_id: string | null
           amount: number
           category: string
           created_at: string | null
@@ -716,6 +717,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          account_id?: string | null
           amount: number
           category: string
           created_at?: string | null
@@ -729,6 +731,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          account_id?: string | null
           amount?: number
           category?: string
           created_at?: string | null
@@ -742,6 +745,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "treasury_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "transactions_project_id_fkey"
             columns: ["project_id"]
