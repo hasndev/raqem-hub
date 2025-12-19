@@ -133,6 +133,7 @@ const Treasury = () => {
     description: "",
     date: new Date().toISOString().split("T")[0],
     project_id: "",
+    account_id: "",
     status: "completed" as Transaction["status"],
   });
 
@@ -152,7 +153,7 @@ const Treasury = () => {
   const totalTreasuryBalance = stats.totalBalance;
 
   const resetForm = () => {
-    setFormData({ type: "income", category: "", amount: "", description: "", date: new Date().toISOString().split("T")[0], project_id: "", status: "completed" });
+    setFormData({ type: "income", category: "", amount: "", description: "", date: new Date().toISOString().split("T")[0], project_id: "", account_id: "", status: "completed" });
   };
 
   const resetAccountForm = () => {
@@ -164,6 +165,10 @@ const Treasury = () => {
   };
 
   const handleAdd = async () => {
+    if (!formData.account_id) {
+      toast({ title: "يرجى اختيار الحساب", variant: "destructive" });
+      return;
+    }
     await addTransaction({
       type: formData.type,
       category: formData.category,
@@ -171,6 +176,7 @@ const Treasury = () => {
       description: formData.description,
       date: formData.date,
       project_id: formData.project_id || null,
+      account_id: formData.account_id,
       status: formData.status,
     });
     setIsAddOpen(false);
@@ -187,6 +193,7 @@ const Treasury = () => {
       description: formData.description,
       date: formData.date,
       project_id: formData.project_id || null,
+      account_id: formData.account_id || null,
       status: formData.status,
     });
     setIsEditOpen(false);
@@ -213,6 +220,7 @@ const Treasury = () => {
       description: `راتب ${selectedEmpForPay.name} - ${salaryMonth}`,
       date: new Date().toISOString().split("T")[0],
       project_id: null,
+      account_id: treasuryAccounts[0]?.id || null,
       status: "completed",
     });
 
@@ -241,6 +249,7 @@ const Treasury = () => {
         description: `راتب ${emp.name} - ${salaryMonth}`,
         date: new Date().toISOString().split("T")[0],
         project_id: null,
+        account_id: treasuryAccounts[0]?.id || null,
         status: "completed",
       });
 
@@ -284,6 +293,7 @@ const Treasury = () => {
         description: `توزيع رصيد لحساب: ${accountFormData.name}`,
         date: new Date().toISOString().split("T")[0],
         project_id: null,
+        account_id: account.id,
         status: "completed",
       });
     }
@@ -318,6 +328,7 @@ const Treasury = () => {
         description: `زيادة رصيد حساب: ${accountFormData.name}`,
         date: new Date().toISOString().split("T")[0],
         project_id: null,
+        account_id: selectedAccount.id,
         status: "completed",
       });
     } else if (balanceDiff < 0) {
@@ -329,6 +340,7 @@ const Treasury = () => {
         description: `سحب من حساب: ${accountFormData.name}`,
         date: new Date().toISOString().split("T")[0],
         project_id: null,
+        account_id: selectedAccount.id,
         status: "completed",
       });
     }
@@ -445,6 +457,7 @@ const Treasury = () => {
       description: tx.description || "",
       date: tx.date || new Date().toISOString().split("T")[0],
       project_id: tx.project_id || "",
+      account_id: tx.account_id || "",
       status: tx.status,
     });
     setIsEditOpen(true);
@@ -518,6 +531,17 @@ const Treasury = () => {
             <option value="cancelled">ملغي</option>
           </select>
         </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-2">الحساب <span className="text-destructive">*</span></label>
+        <select
+          value={formData.account_id}
+          onChange={(e) => setFormData({ ...formData, account_id: e.target.value })}
+          className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+        >
+          <option value="">اختر الحساب</option>
+          {treasuryAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
       </div>
       {formData.type === "income" && (
         <div>
@@ -865,6 +889,7 @@ const Treasury = () => {
                   <tr>
                     <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">التاريخ</th>
                     <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">النوع</th>
+                    <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">الحساب</th>
                     <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">التصنيف</th>
                     <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">الوصف</th>
                     <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">المبلغ</th>
@@ -885,6 +910,11 @@ const Treasury = () => {
                           )}
                           <span className={`text-sm ${transactionTypes[tx.type].color}`}>{transactionTypes[tx.type].label}</span>
                         </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className="text-xs">
+                          {treasuryAccounts.find(a => a.id === tx.account_id)?.name || "—"}
+                        </Badge>
                       </td>
                       <td className="px-4 py-3 text-sm">{tx.category}</td>
                       <td className="px-4 py-3 text-sm max-w-[200px] truncate">{tx.description}</td>

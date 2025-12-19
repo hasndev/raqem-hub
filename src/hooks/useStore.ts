@@ -116,6 +116,8 @@ export interface Transaction {
   date: string;
   project_id: string | null;
   project?: Project | null;
+  account_id: string | null;
+  account?: TreasuryAccount | null;
   status: "completed" | "pending" | "cancelled";
   created_by: string | null;
 }
@@ -393,7 +395,7 @@ export function useStore() {
   };
 
   // Transactions CRUD
-  const addTransaction = async (transaction: Omit<Transaction, "id" | "project" | "created_by">) => {
+  const addTransaction = async (transaction: Omit<Transaction, "id" | "project" | "created_by" | "account">) => {
     const { data: userData } = await supabase.auth.getUser();
     
     const { data, error } = await supabase
@@ -411,7 +413,7 @@ export function useStore() {
   };
 
   const updateTransaction = async (id: string, updates: Partial<Transaction>) => {
-    const { project, ...dbUpdates } = updates;
+    const { project, account, ...dbUpdates } = updates;
     const { error } = await supabase.from("transactions").update(dbUpdates).eq("id", id);
     
     if (error) {
@@ -561,6 +563,7 @@ export function useStore() {
       description: `دفعة دين: ${debt.entity_name} - ${notes || ""}`,
       date: new Date().toISOString().split("T")[0],
       project_id: debt.project_id,
+      account_id: null,
       status: "completed",
     });
 
