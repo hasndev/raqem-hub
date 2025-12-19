@@ -23,6 +23,7 @@ import {
   Eye,
   EyeOff,
   Pencil,
+  KeyRound,
 } from "lucide-react";
 
 type AppRole = "admin" | "supervisor" | "accountant" | "employee";
@@ -68,11 +69,13 @@ const UsersPage = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<AppRole[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [newUser, setNewUser] = useState<NewUserForm>({
     email: "",
     password: "",
@@ -295,6 +298,31 @@ const UsersPage = () => {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!selectedUser) return;
+
+    setIsResetting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("reset-password", {
+        body: { user_id: selectedUser.id },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({ title: "تم إعادة تعيين كلمة المرور بنجاح", description: "كلمة المرور الجديدة: 123456" });
+      setIsResetPasswordOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "خطأ في إعادة تعيين كلمة المرور",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   const filteredUsers = users.filter(
     (u) =>
       u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -476,6 +504,18 @@ const UsersPage = () => {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
+                          title="إعادة تعيين كلمة المرور"
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setIsResetPasswordOpen(true);
+                          }}
+                        >
+                          <KeyRound className="w-4 h-4 text-warning" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
                           title="إزالة الصلاحيات"
                           onClick={() => {
                             setSelectedUser(user);
@@ -552,6 +592,17 @@ const UsersPage = () => {
         description={`هل أنت متأكد من إزالة جميع صلاحيات ${selectedUser?.full_name || "المستخدم"}؟`}
         confirmText="إزالة"
         variant="destructive"
+      />
+
+      {/* Reset Password Confirm */}
+      <ConfirmDialog
+        isOpen={isResetPasswordOpen}
+        onClose={() => setIsResetPasswordOpen(false)}
+        onConfirm={handleResetPassword}
+        title="إعادة تعيين كلمة المرور"
+        description={`هل أنت متأكد من إعادة تعيين كلمة مرور ${selectedUser?.full_name || "المستخدم"} إلى القيمة الافتراضية (123456)؟`}
+        confirmText={isResetting ? "جاري..." : "إعادة تعيين"}
+        variant="default"
       />
 
       {/* Edit User Modal */}
