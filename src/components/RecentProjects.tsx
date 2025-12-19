@@ -25,7 +25,7 @@ export function RecentProjects() {
                   <h3 className="font-semibold text-card-foreground">
                     {project.name}
                   </h3>
-                  <p className="text-sm text-muted-foreground">{project.client}</p>
+                  <p className="text-sm text-muted-foreground">{project.client?.name || "-"}</p>
                 </div>
                 <Badge className={projectStatuses[project.status].color}>
                   {projectStatuses[project.status].label}

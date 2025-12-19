@@ -13,7 +13,7 @@ export function RecentClients() {
   const recentClients = clients.slice(0, 4);
 
   const getClientProjects = (clientId: string) => 
-    projects.filter(p => p.clientId === clientId).length;
+    projects.filter(p => p.client_id === clientId).length;
 
   return (
     <div className="bg-card rounded-xl shadow-card animate-slide-up">

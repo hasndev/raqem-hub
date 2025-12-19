@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Eye, Pencil, Trash2, Mail, Phone, Building2 } from "lucide-react";
+import { Plus, Search, Eye, Pencil, Trash2, Mail, Phone } from "lucide-react";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -30,10 +30,10 @@ const Clients = () => {
   });
 
   const filteredClients = clients.filter(c => 
-    c.name.includes(search) || c.email.includes(search)
+    c.name.includes(search) || c.email?.includes(search)
   );
 
-  const getClientProjects = (clientId: string) => projects.filter(p => p.clientId === clientId);
+  const getClientProjects = (clientId: string) => projects.filter(p => p.client_id === clientId);
   const getClientTotalValue = (clientId: string) => 
     getClientProjects(clientId).reduce((sum, p) => sum + p.budget, 0);
 
@@ -41,32 +41,39 @@ const Clients = () => {
     setFormData({ name: "", email: "", phone: "", address: "", type: "company", notes: "" });
   };
 
-  const handleAdd = () => {
-    addClient({
+  const handleAdd = async () => {
+    await addClient({
       name: formData.name,
-      email: formData.email,
-      phone: formData.phone,
-      address: formData.address,
+      email: formData.email || null,
+      phone: formData.phone || null,
+      address: formData.address || null,
       type: formData.type,
-      notes: formData.notes,
+      notes: formData.notes || null,
     });
     setIsAddOpen(false);
     resetForm();
     toast({ title: "تم إضافة العميل بنجاح" });
   };
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!selectedClient) return;
-    updateClient(selectedClient.id, formData);
+    await updateClient(selectedClient.id, {
+      name: formData.name,
+      email: formData.email || null,
+      phone: formData.phone || null,
+      address: formData.address || null,
+      type: formData.type,
+      notes: formData.notes || null,
+    });
     setIsEditOpen(false);
     setSelectedClient(null);
     resetForm();
     toast({ title: "تم تحديث بيانات العميل" });
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selectedClient) return;
-    deleteClient(selectedClient.id);
+    await deleteClient(selectedClient.id);
     setIsDeleteOpen(false);
     setSelectedClient(null);
     toast({ title: "تم حذف العميل", variant: "destructive" });
@@ -76,8 +83,8 @@ const Clients = () => {
     setSelectedClient(client);
     setFormData({
       name: client.name,
-      email: client.email,
-      phone: client.phone,
+      email: client.email || "",
+      phone: client.phone || "",
       address: client.address || "",
       type: client.type,
       notes: client.notes || "",
@@ -217,11 +224,11 @@ const Clients = () => {
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Mail className="w-4 h-4" />
-                    {client.email}
+                    {client.email || "-"}
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Phone className="w-4 h-4" />
-                    {client.phone}
+                    {client.phone || "-"}
                   </div>
                 </div>
                 <div className="pt-4 border-t border-border flex items-center justify-between">
@@ -231,12 +238,15 @@ const Clients = () => {
                   </div>
                   <div className="text-left">
                     <p className="text-xs text-muted-foreground">إجمالي القيمة</p>
-                    <p className="font-semibold text-primary">{totalValue.toLocaleString()} ر.س</p>
+                    <p className="font-semibold text-primary">${totalValue.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
             );
           })}
+          {filteredClients.length === 0 && (
+            <p className="col-span-full text-center text-muted-foreground py-8">لا يوجد عملاء</p>
+          )}
         </div>
       </div>
 
@@ -265,15 +275,15 @@ const Clients = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">البريد الإلكتروني</p>
-                <p className="font-medium">{selectedClient.email}</p>
+                <p className="font-medium">{selectedClient.email || "-"}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">رقم الهاتف</p>
-                <p className="font-medium">{selectedClient.phone}</p>
+                <p className="font-medium">{selectedClient.phone || "-"}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">تاريخ الإضافة</p>
-                <p className="font-medium">{selectedClient.createdAt}</p>
+                <p className="font-medium">{selectedClient.created_at?.split('T')[0] || "-"}</p>
               </div>
               {selectedClient.address && (
                 <div>
@@ -288,7 +298,7 @@ const Clients = () => {
                 {getClientProjects(selectedClient.id).map(project => (
                   <div key={project.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                     <span className="font-medium">{project.name}</span>
-                    <span className="text-primary font-semibold">{project.budget.toLocaleString()} ر.س</span>
+                    <span className="text-primary font-semibold">${project.budget.toLocaleString()}</span>
                   </div>
                 ))}
                 {getClientProjects(selectedClient.id).length === 0 && (
