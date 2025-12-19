@@ -11,6 +11,7 @@ import { StatsCard } from "@/components/StatsCard";
 import { RecentProjects } from "@/components/RecentProjects";
 import { RecentClients } from "@/components/RecentClients";
 import { RevenueChart } from "@/components/RevenueChart";
+import { ProjectsStatusChart } from "@/components/ProjectsStatusChart";
 import { useAppStore } from "@/context/StoreContext";
 import { Button } from "@/components/ui/button";
 
@@ -78,11 +79,14 @@ const Index = () => {
           />
         </div>
 
-        {/* Charts & Tables */}
+        {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <RevenueChart />
-          <RecentProjects />
+          <ProjectsStatusChart />
         </div>
+
+        {/* Recent Projects */}
+        <RecentProjects />
 
         {/* Clients */}
         <RecentClients />
