@@ -346,7 +346,7 @@ const Projects = () => {
 
   const getTeamMember = (employeeId: string) => employees.find(e => e.id === employeeId);
 
-  const ProjectForm = ({ onSubmit, submitText }: { onSubmit: () => void; submitText: string }) => (
+  const renderProjectForm = (onSubmit: () => void, submitText: string) => (
     <div className="space-y-4">
       <div>
         <label className="block text-sm font-medium mb-2">اسم المشروع *</label>
@@ -598,11 +598,11 @@ const Projects = () => {
 
       {/* Add/Edit Project Modal */}
       <Modal isOpen={isAddOpen} onClose={() => { setIsAddOpen(false); resetForm(); }} title="إضافة مشروع جديد">
-        <ProjectForm onSubmit={handleAdd} submitText="إضافة المشروع" />
+        {renderProjectForm(handleAdd, "إضافة المشروع")}
       </Modal>
 
       <Modal isOpen={isEditOpen} onClose={() => { setIsEditOpen(false); setSelectedProject(null); resetForm(); }} title="تعديل المشروع">
-        <ProjectForm onSubmit={handleEdit} submitText="حفظ التغييرات" />
+        {renderProjectForm(handleEdit, "حفظ التغييرات")}
       </Modal>
 
       {/* Project Details Modal */}

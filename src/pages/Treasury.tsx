@@ -196,7 +196,7 @@ const Treasury = () => {
   const paidCount = activeEmployees.filter(e => isEmployeePaidForMonth(e.id, salaryMonth)).length;
   const unpaidCount = activeEmployees.length - paidCount;
 
-  const TxForm = ({ onSubmit, submitText }: { onSubmit: () => void; submitText: string }) => (
+  const renderTxForm = (onSubmit: () => void, submitText: string) => (
     <div className="space-y-4">
       <div>
         <label className="block text-sm font-medium mb-2">نوع المعاملة</label>
@@ -594,11 +594,11 @@ const Treasury = () => {
 
       {/* Modals */}
       <Modal isOpen={isAddOpen} onClose={() => { setIsAddOpen(false); resetForm(); }} title="إضافة معاملة جديدة">
-        <TxForm onSubmit={handleAdd} submitText="إضافة المعاملة" />
+        {renderTxForm(handleAdd, "إضافة المعاملة")}
       </Modal>
 
       <Modal isOpen={isEditOpen} onClose={() => { setIsEditOpen(false); setSelectedTx(null); resetForm(); }} title="تعديل المعاملة">
-        <TxForm onSubmit={handleEdit} submitText="حفظ التغييرات" />
+        {renderTxForm(handleEdit, "حفظ التغييرات")}
       </Modal>
 
       <Modal isOpen={isPaySalaryOpen} onClose={() => { setIsPaySalaryOpen(false); setSelectedEmpForPay(null); }} title="تأكيد صرف الراتب" size="sm">
