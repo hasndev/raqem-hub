@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { NotificationsDropdown } from "@/components/NotificationsDropdown";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/context/AuthContext";
 
 export function DashboardHeader() {
@@ -28,6 +29,9 @@ export function DashboardHeader() {
 
       {/* Actions */}
       <div className="flex items-center gap-4">
+        {/* Theme Toggle */}
+        <ThemeToggle />
+
         {/* Notifications */}
         <NotificationsDropdown />
 
