@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Plus,
   Search,
@@ -17,6 +17,8 @@ import {
   Receipt,
   HandCoins,
   DollarSign,
+  FolderKanban,
+  Calendar,
 } from "lucide-react";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -36,6 +38,20 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { TreasuryAccount, Debt } from "@/hooks/useStore";
+import { supabase } from "@/integrations/supabase/client";
+
+interface ProjectPaymentSchedule {
+  id: string;
+  project_id: string;
+  title: string;
+  percentage: number;
+  amount: number | null;
+  due_date: string;
+  status: string;
+  paid_at: string | null;
+  transaction_id: string | null;
+  notes: string | null;
+}
 
 const categories = {
   income: ["إيرادات مشاريع", "إيرادات استشارات", "إيرادات تدريب", "إيرادات أخرى"],
@@ -126,6 +142,9 @@ const Treasury = () => {
     project_id: "",
   });
 
+  // Project payment schedules state
+  const [projectPayments, setProjectPayments] = useState<(ProjectPaymentSchedule & { project_name?: string })[]>([]);
+
   const [formData, setFormData] = useState({
     type: "income" as Transaction["type"],
     category: "",
@@ -140,7 +159,25 @@ const Treasury = () => {
   // Get stats
   const stats = getStats();
 
-  const filteredTx = transactions.filter(t => 
+  // Fetch project payment schedules
+  useEffect(() => {
+    const fetchProjectPayments = async () => {
+      const { data } = await supabase
+        .from("project_payment_schedules")
+        .select("*, projects(name)")
+        .order("due_date");
+      
+      if (data) {
+        setProjectPayments(data.map((p: any) => ({
+          ...p,
+          project_name: p.projects?.name
+        })));
+      }
+    };
+    fetchProjectPayments();
+  }, []);
+
+  const filteredTx = transactions.filter(t =>
     (filterType === "all" || t.type === filterType) &&
     ((t.description || "").includes(search) || t.category.includes(search))
   );
@@ -854,6 +891,7 @@ const Treasury = () => {
         <Tabs defaultValue="transactions" className="animate-slide-up">
           <TabsList className="mb-4">
             <TabsTrigger value="transactions">المعاملات المالية</TabsTrigger>
+            <TabsTrigger value="projectPayments">دفعات المشاريع</TabsTrigger>
             <TabsTrigger value="debts">إدارة الديون</TabsTrigger>
             <TabsTrigger value="salaries">إدارة الرواتب</TabsTrigger>
             <TabsTrigger value="accounts">حسابات الخزينة</TabsTrigger>
@@ -938,6 +976,64 @@ const Treasury = () => {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          </TabsContent>
+
+          {/* Project Payments Tab */}
+          <TabsContent value="projectPayments" className="space-y-4">
+            <div className="bg-card rounded-xl shadow-card overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">المشروع</th>
+                    <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">الدفعة</th>
+                    <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">النسبة</th>
+                    <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">المبلغ</th>
+                    <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">تاريخ الاستحقاق</th>
+                    <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">الحالة</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {projectPayments.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
+                        <FolderKanban className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                        <p>لا توجد دفعات مشاريع مستحقة</p>
+                        <p className="text-sm mt-1">أضف مواعيد الدفع من داخل تفاصيل المشروع</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    projectPayments.map((payment) => {
+                      const isOverdue = new Date(payment.due_date) < new Date() && payment.status !== "paid";
+                      return (
+                        <tr key={payment.id} className="hover:bg-muted/50 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <FolderKanban className="w-4 h-4 text-primary" />
+                              <span className="font-medium">{payment.project_name || "مشروع غير معروف"}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm">{payment.title}</td>
+                          <td className="px-4 py-3 text-sm">{payment.percentage}%</td>
+                          <td className="px-4 py-3 font-semibold text-primary">${Number(payment.amount).toLocaleString()}</td>
+                          <td className="px-4 py-3">
+                            <div className={`flex items-center gap-1 text-sm ${isOverdue ? "text-destructive" : "text-muted-foreground"}`}>
+                              <Calendar className="w-3.5 h-3.5" />
+                              {payment.due_date}
+                              {isOverdue && <span className="text-xs">(متأخر)</span>}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <Badge className={payment.status === "paid" ? "bg-success text-success-foreground" : isOverdue ? "bg-destructive text-destructive-foreground" : "bg-warning text-warning-foreground"}>
+                              {payment.status === "paid" ? "مدفوع" : isOverdue ? "متأخر" : "قيد الانتظار"}
+                            </Badge>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>

@@ -463,6 +463,66 @@ export type Database = {
           },
         ]
       }
+      project_payment_schedules: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          due_date: string
+          id: string
+          notes: string | null
+          paid_at: string | null
+          percentage: number
+          project_id: string
+          status: string | null
+          title: string
+          transaction_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string | null
+          due_date: string
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          percentage?: number
+          project_id: string
+          status?: string | null
+          title: string
+          transaction_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string | null
+          due_date?: string
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          percentage?: number
+          project_id?: string
+          status?: string | null
+          title?: string
+          transaction_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_payment_schedules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_payment_schedules_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_tasks: {
         Row: {
           actual_hours: number | null

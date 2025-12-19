@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { 
   Plus, Search, Eye, Pencil, Trash2, Users, ListTodo, 
   Target, Clock, Calendar, AlertCircle, CheckCircle2,
-  UserPlus, PlayCircle, PauseCircle, XCircle
+  UserPlus, PlayCircle, PauseCircle, XCircle, DollarSign
 } from "lucide-react";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,19 @@ interface ProjectMilestone {
   due_date: string | null;
   completed_at: string | null;
   status: string;
+}
+
+interface ProjectPaymentSchedule {
+  id: string;
+  project_id: string;
+  title: string;
+  percentage: number;
+  amount: number | null;
+  due_date: string;
+  status: string;
+  paid_at: string | null;
+  transaction_id: string | null;
+  notes: string | null;
 }
 
 const taskStatuses = {
@@ -104,6 +117,11 @@ const Projects = () => {
   const [isAddMilestoneOpen, setIsAddMilestoneOpen] = useState(false);
   const [milestoneForm, setMilestoneForm] = useState({ title: "", description: "", due_date: "" });
 
+  // Payment Schedules
+  const [paymentSchedules, setPaymentSchedules] = useState<ProjectPaymentSchedule[]>([]);
+  const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
+  const [paymentForm, setPaymentForm] = useState({ title: "", percentage: "", amount: "", due_date: "", notes: "" });
+
   const [formData, setFormData] = useState({
     name: "", client_id: "", department_id: "", budget: "", 
     start_date: "", end_date: "", description: "", 
@@ -121,16 +139,19 @@ const Projects = () => {
     const [
       { data: assignmentsData },
       { data: tasksData },
-      { data: milestonesData }
+      { data: milestonesData },
+      { data: paymentSchedulesData }
     ] = await Promise.all([
       supabase.from("project_assignments").select("*").eq("project_id", projectId),
       supabase.from("project_tasks").select("*").eq("project_id", projectId).order("created_at", { ascending: false }),
-      supabase.from("project_milestones").select("*").eq("project_id", projectId).order("due_date")
+      supabase.from("project_milestones").select("*").eq("project_id", projectId).order("due_date"),
+      supabase.from("project_payment_schedules").select("*").eq("project_id", projectId).order("due_date")
     ]);
     
     setAssignments((assignmentsData || []) as ProjectAssignment[]);
     setTasks((tasksData || []) as ProjectTask[]);
     setMilestones((milestonesData || []) as ProjectMilestone[]);
+    setPaymentSchedules((paymentSchedulesData || []) as ProjectPaymentSchedule[]);
   };
 
   const filteredProjects = projects.filter(p => {
@@ -316,6 +337,42 @@ const Projects = () => {
       return;
     }
     setMilestones(prev => prev.map(m => m.id === milestone.id ? { ...m, ...updates } : m));
+  };
+
+  // Payment schedule handlers
+  const handleAddPaymentSchedule = async () => {
+    if (!selectedProject) return;
+    const amount = paymentForm.amount ? Number(paymentForm.amount) : 
+      (Number(paymentForm.percentage) / 100) * selectedProject.budget;
+    
+    const { error } = await supabase.from("project_payment_schedules").insert({
+      project_id: selectedProject.id,
+      title: paymentForm.title,
+      percentage: Number(paymentForm.percentage) || 0,
+      amount: amount,
+      due_date: paymentForm.due_date,
+      notes: paymentForm.notes || null,
+    });
+    
+    if (error) {
+      toast({ title: "خطأ في إضافة موعد الدفع", description: error.message, variant: "destructive" });
+      return;
+    }
+    
+    setIsAddPaymentOpen(false);
+    setPaymentForm({ title: "", percentage: "", amount: "", due_date: "", notes: "" });
+    fetchProjectDetails(selectedProject.id);
+    toast({ title: "تم إضافة موعد الدفع" });
+  };
+
+  const handleDeletePaymentSchedule = async (scheduleId: string) => {
+    const { error } = await supabase.from("project_payment_schedules").delete().eq("id", scheduleId);
+    if (error) {
+      toast({ title: "خطأ في حذف موعد الدفع", variant: "destructive" });
+      return;
+    }
+    setPaymentSchedules(prev => prev.filter(p => p.id !== scheduleId));
+    toast({ title: "تم حذف موعد الدفع" });
   };
 
   const openEdit = (project: Project) => {
@@ -631,6 +688,10 @@ const Projects = () => {
                 <Target className="w-4 h-4" />
                 المراحل ({milestones.length})
               </TabsTrigger>
+              <TabsTrigger value="payments" className="gap-2">
+                <DollarSign className="w-4 h-4" />
+                مواعيد الدفع ({paymentSchedules.length})
+              </TabsTrigger>
             </TabsList>
 
             {/* Overview Tab */}
@@ -863,6 +924,70 @@ const Projects = () => {
                 </div>
               )}
             </TabsContent>
+
+            {/* Payment Schedules Tab */}
+            <TabsContent value="payments" className="space-y-4">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-muted-foreground">مواعيد دفعات المشروع</p>
+                <Button size="sm" className="gap-2" onClick={() => setIsAddPaymentOpen(true)}>
+                  <Plus className="w-4 h-4" />
+                  دفعة جديدة
+                </Button>
+              </div>
+
+              {paymentSchedules.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <DollarSign className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                  <p>لا توجد مواعيد دفع</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {paymentSchedules.map(schedule => (
+                    <div 
+                      key={schedule.id} 
+                      className={`flex items-center justify-between p-4 rounded-lg transition-colors ${
+                        schedule.status === "paid" ? "bg-success/10" : "bg-muted/50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          schedule.status === "paid" ? "bg-success text-success-foreground" : "bg-primary/20 text-primary"
+                        }`}>
+                          <DollarSign className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className={`font-medium ${schedule.status === "paid" ? "text-muted-foreground" : ""}`}>
+                            {schedule.title}
+                          </p>
+                          <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
+                            <span>{schedule.percentage}%</span>
+                            <span>•</span>
+                            <span>${Number(schedule.amount).toLocaleString()}</span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {schedule.due_date}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className={schedule.status === "paid" ? "bg-success text-success-foreground" : "bg-warning text-warning-foreground"}>
+                          {schedule.status === "paid" ? "مدفوع" : "قيد الانتظار"}
+                        </Badge>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleDeletePaymentSchedule(schedule.id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
           </Tabs>
         )}
       </Modal>
@@ -1035,7 +1160,72 @@ const Projects = () => {
         </div>
       </Modal>
 
-      {/* Delete Confirmation */}
+      {/* Add Payment Schedule Modal */}
+      <Modal isOpen={isAddPaymentOpen} onClose={() => setIsAddPaymentOpen(false)} title="إضافة موعد دفع">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">عنوان الدفعة *</label>
+            <input
+              type="text"
+              value={paymentForm.title}
+              onChange={(e) => setPaymentForm({ ...paymentForm, title: e.target.value })}
+              className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm"
+              placeholder="مثال: الدفعة الأولى، دفعة التسليم..."
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">النسبة من الميزانية (%)</label>
+              <input
+                type="number"
+                value={paymentForm.percentage}
+                onChange={(e) => {
+                  const pct = Number(e.target.value);
+                  const amt = selectedProject ? (pct / 100) * selectedProject.budget : 0;
+                  setPaymentForm({ ...paymentForm, percentage: e.target.value, amount: amt.toString() });
+                }}
+                className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm"
+                placeholder="مثال: 30"
+                min="0"
+                max="100"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">المبلغ ($)</label>
+              <input
+                type="number"
+                value={paymentForm.amount}
+                onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm"
+                placeholder="يحسب تلقائياً من النسبة"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">تاريخ الاستحقاق *</label>
+            <input
+              type="date"
+              value={paymentForm.due_date}
+              onChange={(e) => setPaymentForm({ ...paymentForm, due_date: e.target.value })}
+              className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">ملاحظات</label>
+            <textarea
+              value={paymentForm.notes}
+              onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
+              className="w-full h-20 px-4 py-2 bg-muted border border-border rounded-lg text-sm resize-none"
+              placeholder="ملاحظات إضافية..."
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="outline" onClick={() => setIsAddPaymentOpen(false)}>إلغاء</Button>
+            <Button onClick={handleAddPaymentSchedule} disabled={!paymentForm.title || !paymentForm.due_date}>إضافة</Button>
+          </div>
+        </div>
+      </Modal>
+
       <ConfirmDialog
         isOpen={isDeleteOpen}
         onClose={() => { setIsDeleteOpen(false); setSelectedProject(null); }}
