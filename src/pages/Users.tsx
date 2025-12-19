@@ -22,6 +22,7 @@ import {
   User,
   Eye,
   EyeOff,
+  Pencil,
 } from "lucide-react";
 
 type AppRole = "admin" | "supervisor" | "accountant" | "employee";
@@ -66,15 +67,21 @@ const UsersPage = () => {
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<AppRole[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [newUser, setNewUser] = useState<NewUserForm>({
     email: "",
     password: "",
     full_name: "",
     roles: [],
+  });
+  const [editUserForm, setEditUserForm] = useState({
+    full_name: "",
+    email: "",
   });
 
   const fetchUsers = async () => {
@@ -240,6 +247,54 @@ const UsersPage = () => {
     }));
   };
 
+  const handleOpenEditModal = (user: UserProfile) => {
+    setSelectedUser(user);
+    setEditUserForm({
+      full_name: user.full_name || "",
+      email: user.email || "",
+    });
+    setIsEditUserOpen(true);
+  };
+
+  const handleUpdateUser = async () => {
+    if (!selectedUser) return;
+
+    if (!editUserForm.full_name.trim()) {
+      toast({
+        title: "خطأ",
+        description: "يرجى إدخال الاسم",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("update-user", {
+        body: {
+          user_id: selectedUser.id,
+          full_name: editUserForm.full_name,
+          email: editUserForm.email || undefined,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({ title: "تم تحديث بيانات المستخدم بنجاح" });
+      setIsEditUserOpen(false);
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: "خطأ في تحديث البيانات",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const filteredUsers = users.filter(
     (u) =>
       u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -403,6 +458,16 @@ const UsersPage = () => {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
+                          title="تعديل البيانات"
+                          onClick={() => handleOpenEditModal(user)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title="إدارة الصلاحيات"
                           onClick={() => handleOpenRoleModal(user)}
                         >
                           <Shield className="w-4 h-4" />
@@ -411,6 +476,7 @@ const UsersPage = () => {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
+                          title="إزالة الصلاحيات"
                           onClick={() => {
                             setSelectedUser(user);
                             setIsDeleteOpen(true);
@@ -487,6 +553,69 @@ const UsersPage = () => {
         confirmText="إزالة"
         variant="destructive"
       />
+
+      {/* Edit User Modal */}
+      <Modal
+        isOpen={isEditUserOpen}
+        onClose={() => setIsEditUserOpen(false)}
+        title="تعديل بيانات المستخدم"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-muted rounded-lg">
+            <Avatar className="h-12 w-12 bg-primary">
+              <AvatarFallback className="bg-primary text-primary-foreground">
+                {selectedUser?.full_name?.charAt(0) || "U"}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="font-bold">{selectedUser?.full_name || "مستخدم"}</p>
+              <p className="text-sm text-muted-foreground">{selectedUser?.email}</p>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">الاسم الكامل *</label>
+            <div className="relative">
+              <User className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <input
+                type="text"
+                value={editUserForm.full_name}
+                onChange={(e) => setEditUserForm({ ...editUserForm, full_name: e.target.value })}
+                placeholder="أدخل الاسم الكامل"
+                className="w-full h-10 pr-10 pl-4 bg-muted border border-border rounded-lg text-sm"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">البريد الإلكتروني</label>
+            <div className="relative">
+              <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <input
+                type="email"
+                value={editUserForm.email}
+                onChange={(e) => setEditUserForm({ ...editUserForm, email: e.target.value })}
+                placeholder="example@email.com"
+                className="w-full h-10 pr-10 pl-4 bg-muted border border-border rounded-lg text-sm"
+                dir="ltr"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="outline" onClick={() => setIsEditUserOpen(false)}>
+              إلغاء
+            </Button>
+            <Button onClick={handleUpdateUser} disabled={isUpdating}>
+              {isUpdating ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground" />
+              ) : (
+                "حفظ التعديلات"
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Add User Modal */}
       <Modal
