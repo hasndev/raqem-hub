@@ -1,42 +1,12 @@
+import { useAppStore } from "@/context/StoreContext";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-
-const projects = [
-  {
-    id: 1,
-    name: "تطبيق إدارة المخزون",
-    client: "شركة الفجر",
-    progress: 75,
-    status: "جاري",
-    statusColor: "bg-primary text-primary-foreground",
-  },
-  {
-    id: 2,
-    name: "نظام حجز المواعيد",
-    client: "عيادات النخيل",
-    progress: 100,
-    status: "مكتمل",
-    statusColor: "bg-success text-success-foreground",
-  },
-  {
-    id: 3,
-    name: "منصة التجارة الإلكترونية",
-    client: "متجر السعادة",
-    progress: 45,
-    status: "جاري",
-    statusColor: "bg-primary text-primary-foreground",
-  },
-  {
-    id: 4,
-    name: "تطبيق توصيل الطعام",
-    client: "مطاعم الريف",
-    progress: 20,
-    status: "قيد البدء",
-    statusColor: "bg-warning text-warning-foreground",
-  },
-];
+import { projectStatuses } from "@/types";
 
 export function RecentProjects() {
+  const { projects } = useAppStore();
+  const recentProjects = projects.slice(0, 4);
+
   return (
     <div className="bg-card rounded-xl shadow-card animate-slide-up">
       <div className="p-6 border-b border-border">
@@ -44,7 +14,7 @@ export function RecentProjects() {
       </div>
       <div className="p-6">
         <div className="space-y-6">
-          {projects.map((project, index) => (
+          {recentProjects.map((project, index) => (
             <div
               key={project.id}
               className="animate-fade-in"
@@ -57,7 +27,9 @@ export function RecentProjects() {
                   </h3>
                   <p className="text-sm text-muted-foreground">{project.client}</p>
                 </div>
-                <Badge className={project.statusColor}>{project.status}</Badge>
+                <Badge className={projectStatuses[project.status].color}>
+                  {projectStatuses[project.status].label}
+                </Badge>
               </div>
               <div className="flex items-center gap-3">
                 <Progress value={project.progress} className="h-2 flex-1" />
@@ -67,6 +39,9 @@ export function RecentProjects() {
               </div>
             </div>
           ))}
+          {recentProjects.length === 0 && (
+            <p className="text-center text-muted-foreground py-4">لا توجد مشاريع</p>
+          )}
         </div>
       </div>
     </div>
