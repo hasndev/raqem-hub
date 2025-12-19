@@ -145,7 +145,7 @@ const Treasury = () => {
 
     setIsPaySalaryOpen(false);
     setSelectedEmpForPay(null);
-    toast({ title: `تم صرف راتب ${selectedEmpForPay.name}`, description: `${selectedEmpForPay.salary.toLocaleString()} ر.س` });
+    toast({ title: `تم صرف راتب ${selectedEmpForPay.name}`, description: `$${selectedEmpForPay.salary.toLocaleString()}` });
   };
 
   const handlePayAllSalaries = () => {
@@ -170,7 +170,7 @@ const Treasury = () => {
     setIsPayAllOpen(false);
     toast({ 
       title: "تم صرف جميع الرواتب", 
-      description: `${unpaidEmployees.length} موظف - ${unpaidEmployees.reduce((s, e) => s + e.salary, 0).toLocaleString()} ر.س` 
+      description: `${unpaidEmployees.length} موظف - $${unpaidEmployees.reduce((s, e) => s + e.salary, 0).toLocaleString()}` 
     });
   };
 
@@ -220,7 +220,7 @@ const Treasury = () => {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-2">المبلغ (ر.س)</label>
+          <label className="block text-sm font-medium mb-2">المبلغ ($)</label>
           <input
             type="number"
             value={formData.amount}
@@ -453,7 +453,7 @@ const Treasury = () => {
               </div>
               <Button onClick={() => setIsPayAllOpen(true)} disabled={unpaidCount === 0} className="gap-2">
                 <CreditCard className="w-4 h-4" />
-                صرف جميع الرواتب ({activeEmployees.reduce((s, e) => !isEmployeePaidForMonth(e.id, salaryMonth) ? s + e.salary : s, 0).toLocaleString()} ر.س)
+                صرف جميع الرواتب (${activeEmployees.reduce((s, e) => !isEmployeePaidForMonth(e.id, salaryMonth) ? s + e.salary : s, 0).toLocaleString()}$)
               </Button>
             </div>
 
@@ -461,18 +461,18 @@ const Treasury = () => {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="bg-card rounded-xl shadow-card p-5">
                 <p className="text-sm text-muted-foreground">إجمالي الرواتب الشهرية</p>
-                <p className="text-2xl font-bold text-card-foreground mt-1">{totalSalaries.toLocaleString()} ر.س</p>
+                <p className="text-2xl font-bold text-card-foreground mt-1">${totalSalaries.toLocaleString()}</p>
               </div>
               <div className="bg-card rounded-xl shadow-card p-5">
                 <p className="text-sm text-muted-foreground">تم صرفه</p>
                 <p className="text-2xl font-bold text-success mt-1">
-                  {activeEmployees.filter(e => isEmployeePaidForMonth(e.id, salaryMonth)).reduce((s, e) => s + e.salary, 0).toLocaleString()} ر.س
+                  ${activeEmployees.filter(e => isEmployeePaidForMonth(e.id, salaryMonth)).reduce((s, e) => s + e.salary, 0).toLocaleString()}
                 </p>
               </div>
               <div className="bg-card rounded-xl shadow-card p-5">
                 <p className="text-sm text-muted-foreground">المتبقي</p>
                 <p className="text-2xl font-bold text-warning mt-1">
-                  {activeEmployees.filter(e => !isEmployeePaidForMonth(e.id, salaryMonth)).reduce((s, e) => s + e.salary, 0).toLocaleString()} ر.س
+                  ${activeEmployees.filter(e => !isEmployeePaidForMonth(e.id, salaryMonth)).reduce((s, e) => s + e.salary, 0).toLocaleString()}
                 </p>
               </div>
               <div className="bg-card rounded-xl shadow-card p-5">
@@ -512,7 +512,7 @@ const Treasury = () => {
                         </td>
                         <td className="px-4 py-3 text-sm">{emp.department}</td>
                         <td className="px-4 py-3 text-sm">{emp.position}</td>
-                        <td className="px-4 py-3 text-sm font-bold">{emp.salary.toLocaleString()} ر.س</td>
+                        <td className="px-4 py-3 text-sm font-bold">${emp.salary.toLocaleString()}</td>
                         <td className="px-4 py-3">
                           {isPaid ? (
                             <Badge className="bg-success text-success-foreground gap-1">
@@ -557,7 +557,7 @@ const Treasury = () => {
                         <span className="font-bold">{account.name}</span>
                         <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">{account.percentage}%</span>
                       </div>
-                      <p className="text-2xl font-bold text-card-foreground">{account.balance.toLocaleString()} ر.س</p>
+                      <p className="text-2xl font-bold text-card-foreground">${account.balance.toLocaleString()}</p>
                       <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{account.description}</p>
                     </div>
                   ))}
@@ -580,7 +580,7 @@ const Treasury = () => {
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value: number) => `${value.toLocaleString()} ر.س`} />
+                    <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -612,7 +612,7 @@ const Treasury = () => {
             </div>
             <div className="text-center py-4">
               <p className="text-sm text-muted-foreground">مبلغ الراتب</p>
-              <p className="text-3xl font-bold text-primary">{selectedEmpForPay.salary.toLocaleString()} ر.س</p>
+              <p className="text-3xl font-bold text-primary">${selectedEmpForPay.salary.toLocaleString()}</p>
               <p className="text-sm text-muted-foreground mt-2">شهر: {salaryMonth}</p>
             </div>
             <div className="flex justify-end gap-3">
@@ -628,7 +628,7 @@ const Treasury = () => {
         onClose={() => setIsPayAllOpen(false)}
         onConfirm={handlePayAllSalaries}
         title="صرف جميع الرواتب"
-        description={`سيتم صرف رواتب ${unpaidCount} موظف بإجمالي ${activeEmployees.filter(e => !isEmployeePaidForMonth(e.id, salaryMonth)).reduce((s, e) => s + e.salary, 0).toLocaleString()} ر.س. هل تريد المتابعة؟`}
+        description={`سيتم صرف رواتب ${unpaidCount} موظف بإجمالي $${activeEmployees.filter(e => !isEmployeePaidForMonth(e.id, salaryMonth)).reduce((s, e) => s + e.salary, 0).toLocaleString()}. هل تريد المتابعة؟`}
         confirmText="صرف الرواتب"
       />
 
