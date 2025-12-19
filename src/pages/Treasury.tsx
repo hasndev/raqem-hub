@@ -14,7 +14,6 @@ import {
   CreditCard,
   CheckCircle2,
   Clock,
-  XCircle,
 } from "lucide-react";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -33,6 +32,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { TreasuryAccount } from "@/hooks/useStore";
 
 const categories = {
   income: ["إيرادات مشاريع", "إيرادات استشارات", "إيرادات تدريب", "إيرادات أخرى"],
@@ -42,7 +42,22 @@ const categories = {
 };
 
 const Treasury = () => {
-  const { transactions, treasuryAccounts, projects, employees, departments, addTransaction, updateTransaction, deleteTransaction, updateEmployee } = useAppStore();
+  const { 
+    transactions, 
+    treasuryAccounts, 
+    projects, 
+    employees, 
+    departments, 
+    addTransaction, 
+    updateTransaction, 
+    deleteTransaction,
+    addTreasuryAccount,
+    updateTreasuryAccount,
+    deleteTreasuryAccount,
+    salaryPayments,
+    addSalaryPayment,
+    isEmployeePaidForMonth,
+  } = useAppStore();
   const { toast } = useToast();
 
   const [search, setSearch] = useState("");
@@ -55,6 +70,21 @@ const Treasury = () => {
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [selectedEmpForPay, setSelectedEmpForPay] = useState<typeof employees[0] | null>(null);
   const [salaryMonth, setSalaryMonth] = useState(new Date().toISOString().slice(0, 7));
+  
+  // Treasury Account state
+  const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
+  const [isEditAccountOpen, setIsEditAccountOpen] = useState(false);
+  const [isDeleteAccountOpen, setIsDeleteAccountOpen] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<TreasuryAccount | null>(null);
+  const [accountFormData, setAccountFormData] = useState({
+    name: "",
+    name_en: "",
+    percentage: "",
+    balance: "",
+    description: "",
+    color: "#3B82F6",
+  });
+
   const [formData, setFormData] = useState({
     type: "income" as Transaction["type"],
     category: "",
@@ -65,30 +95,27 @@ const Treasury = () => {
     status: "completed" as Transaction["status"],
   });
 
-  // Salary payment tracking
-  const [paidSalaries, setPaidSalaries] = useState<Record<string, string[]>>({});
-  
-  const isEmployeePaidForMonth = (empId: string, month: string) => {
-    return paidSalaries[month]?.includes(empId) || false;
-  };
-
   const filteredTx = transactions.filter(t => 
     (filterType === "all" || t.type === filterType) &&
-    (t.description.includes(search) || t.category.includes(search))
+    ((t.description || "").includes(search) || t.category.includes(search))
   );
 
-  const totalIncome = transactions.filter(t => t.type === "income" && t.status === "completed").reduce((s, t) => s + t.amount, 0);
-  const totalExpense = transactions.filter(t => t.type === "expense" && t.status === "completed").reduce((s, t) => s + t.amount, 0);
+  const totalIncome = transactions.filter(t => t.type === "income" && t.status === "completed").reduce((s, t) => s + Number(t.amount), 0);
+  const totalExpense = transactions.filter(t => t.type === "expense" && t.status === "completed").reduce((s, t) => s + Number(t.amount), 0);
   const netProfit = totalIncome - totalExpense;
-  const totalSalaries = employees.reduce((s, e) => s + e.salary, 0);
+  const totalSalaries = employees.reduce((s, e) => s + Number(e.salary), 0);
   const activeEmployees = employees.filter(e => e.status === "active");
 
   const resetForm = () => {
     setFormData({ type: "income", category: "", amount: "", description: "", date: new Date().toISOString().split("T")[0], project_id: "", status: "completed" });
   };
 
-  const handleAdd = () => {
-    addTransaction({
+  const resetAccountForm = () => {
+    setAccountFormData({ name: "", name_en: "", percentage: "", balance: "", description: "", color: "#3B82F6" });
+  };
+
+  const handleAdd = async () => {
+    await addTransaction({
       type: formData.type,
       category: formData.category,
       amount: Number(formData.amount),
@@ -102,9 +129,9 @@ const Treasury = () => {
     toast({ title: "تمت إضافة المعاملة بنجاح" });
   };
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!selectedTx) return;
-    updateTransaction(selectedTx.id, {
+    await updateTransaction(selectedTx.id, {
       type: formData.type,
       category: formData.category,
       amount: Number(formData.amount),
@@ -119,62 +146,124 @@ const Treasury = () => {
     toast({ title: "تم تحديث المعاملة" });
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selectedTx) return;
-    deleteTransaction(selectedTx.id);
+    await deleteTransaction(selectedTx.id);
     setIsDeleteOpen(false);
     setSelectedTx(null);
     toast({ title: "تم حذف المعاملة", variant: "destructive" });
   };
 
-  const handlePaySalary = () => {
+  const handlePaySalary = async () => {
     if (!selectedEmpForPay) return;
     
-    addTransaction({
+    // Create transaction first
+    const transaction = await addTransaction({
       type: "expense",
       category: "رواتب",
-      amount: selectedEmpForPay.salary,
+      amount: Number(selectedEmpForPay.salary),
       description: `راتب ${selectedEmpForPay.name} - ${salaryMonth}`,
       date: new Date().toISOString().split("T")[0],
       project_id: null,
       status: "completed",
     });
 
-    setPaidSalaries(prev => ({
-      ...prev,
-      [salaryMonth]: [...(prev[salaryMonth] || []), selectedEmpForPay.id]
-    }));
+    // Record salary payment
+    if (transaction) {
+      await addSalaryPayment({
+        employee_id: selectedEmpForPay.id,
+        month: salaryMonth,
+        amount: Number(selectedEmpForPay.salary),
+        transaction_id: transaction.id,
+      });
+    }
 
     setIsPaySalaryOpen(false);
     setSelectedEmpForPay(null);
-    toast({ title: `تم صرف راتب ${selectedEmpForPay.name}`, description: `$${selectedEmpForPay.salary.toLocaleString()}` });
+    toast({ title: `تم صرف راتب ${selectedEmpForPay.name}`, description: `$${Number(selectedEmpForPay.salary).toLocaleString()}` });
   };
 
-  const handlePayAllSalaries = () => {
+  const handlePayAllSalaries = async () => {
     const unpaidEmployees = activeEmployees.filter(e => !isEmployeePaidForMonth(e.id, salaryMonth));
     
-    unpaidEmployees.forEach(emp => {
-      addTransaction({
+    for (const emp of unpaidEmployees) {
+      const transaction = await addTransaction({
         type: "expense",
         category: "رواتب",
-        amount: emp.salary,
+        amount: Number(emp.salary),
         description: `راتب ${emp.name} - ${salaryMonth}`,
         date: new Date().toISOString().split("T")[0],
         project_id: null,
         status: "completed",
       });
-    });
 
-    setPaidSalaries(prev => ({
-      ...prev,
-      [salaryMonth]: [...(prev[salaryMonth] || []), ...unpaidEmployees.map(e => e.id)]
-    }));
+      if (transaction) {
+        await addSalaryPayment({
+          employee_id: emp.id,
+          month: salaryMonth,
+          amount: Number(emp.salary),
+          transaction_id: transaction.id,
+        });
+      }
+    }
 
     setIsPayAllOpen(false);
     toast({ 
       title: "تم صرف جميع الرواتب", 
-      description: `${unpaidEmployees.length} موظف - $${unpaidEmployees.reduce((s, e) => s + e.salary, 0).toLocaleString()}` 
+      description: `${unpaidEmployees.length} موظف - $${unpaidEmployees.reduce((s, e) => s + Number(e.salary), 0).toLocaleString()}` 
     });
+  };
+
+  // Treasury Account handlers
+  const handleAddAccount = async () => {
+    await addTreasuryAccount({
+      name: accountFormData.name,
+      name_en: accountFormData.name_en || null,
+      percentage: Number(accountFormData.percentage) || 0,
+      balance: Number(accountFormData.balance) || 0,
+      description: accountFormData.description || null,
+      color: accountFormData.color,
+    });
+    setIsAddAccountOpen(false);
+    resetAccountForm();
+    toast({ title: "تمت إضافة الحساب بنجاح" });
+  };
+
+  const handleEditAccount = async () => {
+    if (!selectedAccount) return;
+    await updateTreasuryAccount(selectedAccount.id, {
+      name: accountFormData.name,
+      name_en: accountFormData.name_en || null,
+      percentage: Number(accountFormData.percentage) || 0,
+      balance: Number(accountFormData.balance) || 0,
+      description: accountFormData.description || null,
+      color: accountFormData.color,
+    });
+    setIsEditAccountOpen(false);
+    setSelectedAccount(null);
+    resetAccountForm();
+    toast({ title: "تم تحديث الحساب" });
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!selectedAccount) return;
+    await deleteTreasuryAccount(selectedAccount.id);
+    setIsDeleteAccountOpen(false);
+    setSelectedAccount(null);
+    toast({ title: "تم حذف الحساب", variant: "destructive" });
+  };
+
+  const openEditAccount = (account: TreasuryAccount) => {
+    setSelectedAccount(account);
+    setAccountFormData({
+      name: account.name,
+      name_en: account.name_en || "",
+      percentage: String(account.percentage),
+      balance: String(account.balance),
+      description: account.description || "",
+      color: account.color,
+    });
+    setIsEditAccountOpen(true);
   };
 
   const openEdit = (tx: Transaction) => {
@@ -283,6 +372,75 @@ const Treasury = () => {
     </div>
   );
 
+  const renderAccountForm = (onSubmit: () => void, submitText: string) => (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-2">اسم الحساب (عربي)</label>
+          <input
+            type="text"
+            value={accountFormData.name}
+            onChange={(e) => setAccountFormData({ ...accountFormData, name: e.target.value })}
+            className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            placeholder="مثال: حساب التشغيل"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-2">اسم الحساب (إنجليزي)</label>
+          <input
+            type="text"
+            value={accountFormData.name_en}
+            onChange={(e) => setAccountFormData({ ...accountFormData, name_en: e.target.value })}
+            className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            placeholder="Operating Account"
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-2">الرصيد ($)</label>
+          <input
+            type="number"
+            value={accountFormData.balance}
+            onChange={(e) => setAccountFormData({ ...accountFormData, balance: e.target.value })}
+            className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-2">النسبة (%)</label>
+          <input
+            type="number"
+            value={accountFormData.percentage}
+            onChange={(e) => setAccountFormData({ ...accountFormData, percentage: e.target.value })}
+            className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-2">اللون</label>
+          <input
+            type="color"
+            value={accountFormData.color}
+            onChange={(e) => setAccountFormData({ ...accountFormData, color: e.target.value })}
+            className="w-full h-10 px-2 bg-muted border border-border rounded-lg cursor-pointer"
+          />
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-2">الوصف</label>
+        <textarea
+          value={accountFormData.description}
+          onChange={(e) => setAccountFormData({ ...accountFormData, description: e.target.value })}
+          className="w-full h-20 px-4 py-2 bg-muted border border-border rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+          placeholder="وصف اختياري للحساب..."
+        />
+      </div>
+      <div className="flex justify-end gap-3 pt-4">
+        <Button variant="outline" onClick={() => { setIsAddAccountOpen(false); setIsEditAccountOpen(false); resetAccountForm(); }}>إلغاء</Button>
+        <Button onClick={onSubmit}>{submitText}</Button>
+      </div>
+    </div>
+  );
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -330,7 +488,7 @@ const Treasury = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">إجمالي الرصيد</p>
-                <p className="text-xl font-bold text-primary">{treasuryAccounts.reduce((s, a) => s + a.balance, 0).toLocaleString()}</p>
+                <p className="text-xl font-bold text-primary">{treasuryAccounts.reduce((s, a) => s + Number(a.balance), 0).toLocaleString()}</p>
               </div>
               <PiggyBank className="w-5 h-5 text-primary" />
             </div>
@@ -408,7 +566,7 @@ const Treasury = () => {
                       <td className="px-4 py-3 text-sm">{tx.category}</td>
                       <td className="px-4 py-3 text-sm max-w-[200px] truncate">{tx.description}</td>
                       <td className={`px-4 py-3 text-sm font-bold ${tx.type === "income" || tx.type === "deposit" ? "text-success" : "text-destructive"}`}>
-                        {tx.type === "income" || tx.type === "deposit" ? "+" : "-"}{tx.amount.toLocaleString()}
+                        {tx.type === "income" || tx.type === "deposit" ? "+" : "-"}{Number(tx.amount).toLocaleString()}
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant={tx.status === "completed" ? "default" : "secondary"} className="text-xs">
@@ -456,7 +614,7 @@ const Treasury = () => {
               </div>
               <Button onClick={() => setIsPayAllOpen(true)} disabled={unpaidCount === 0} className="gap-2">
                 <CreditCard className="w-4 h-4" />
-                صرف جميع الرواتب (${activeEmployees.reduce((s, e) => !isEmployeePaidForMonth(e.id, salaryMonth) ? s + e.salary : s, 0).toLocaleString()}$)
+                صرف جميع الرواتب (${activeEmployees.reduce((s, e) => !isEmployeePaidForMonth(e.id, salaryMonth) ? s + Number(e.salary) : s, 0).toLocaleString()}$)
               </Button>
             </div>
 
@@ -469,13 +627,13 @@ const Treasury = () => {
               <div className="bg-card rounded-xl shadow-card p-5">
                 <p className="text-sm text-muted-foreground">تم صرفه</p>
                 <p className="text-2xl font-bold text-success mt-1">
-                  ${activeEmployees.filter(e => isEmployeePaidForMonth(e.id, salaryMonth)).reduce((s, e) => s + e.salary, 0).toLocaleString()}
+                  ${activeEmployees.filter(e => isEmployeePaidForMonth(e.id, salaryMonth)).reduce((s, e) => s + Number(e.salary), 0).toLocaleString()}
                 </p>
               </div>
               <div className="bg-card rounded-xl shadow-card p-5">
                 <p className="text-sm text-muted-foreground">المتبقي</p>
                 <p className="text-2xl font-bold text-warning mt-1">
-                  ${activeEmployees.filter(e => !isEmployeePaidForMonth(e.id, salaryMonth)).reduce((s, e) => s + e.salary, 0).toLocaleString()}
+                  ${activeEmployees.filter(e => !isEmployeePaidForMonth(e.id, salaryMonth)).reduce((s, e) => s + Number(e.salary), 0).toLocaleString()}
                 </p>
               </div>
               <div className="bg-card rounded-xl shadow-card p-5">
@@ -515,7 +673,7 @@ const Treasury = () => {
                         </td>
                         <td className="px-4 py-3 text-sm">{departments.find(d => d.id === emp.department_id)?.name || "-"}</td>
                         <td className="px-4 py-3 text-sm">{emp.position}</td>
-                        <td className="px-4 py-3 text-sm font-bold">${emp.salary.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-sm font-bold">${Number(emp.salary).toLocaleString()}</td>
                         <td className="px-4 py-3">
                           {isPaid ? (
                             <Badge className="bg-success text-success-foreground gap-1">
@@ -547,6 +705,12 @@ const Treasury = () => {
 
           {/* Accounts Tab */}
           <TabsContent value="accounts" className="space-y-4">
+            <div className="flex justify-end">
+              <Button className="gap-2" onClick={() => setIsAddAccountOpen(true)}>
+                <Plus className="w-4 h-4" />
+                إضافة حساب جديد
+              </Button>
+            </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -554,13 +718,22 @@ const Treasury = () => {
                     <div
                       key={account.id}
                       className="bg-card rounded-xl shadow-card p-5 border-r-4 animate-scale-in"
-                      style={{ borderColor: COLORS[index % COLORS.length], animationDelay: `${index * 100}ms` }}
+                      style={{ borderColor: account.color || COLORS[index % COLORS.length], animationDelay: `${index * 100}ms` }}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-bold">{account.name}</span>
-                        <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">{account.percentage}%</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">{account.percentage}%</span>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditAccount(account)}>
+                            <Pencil className="w-3 h-3" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedAccount(account); setIsDeleteAccountOpen(true); }}>
+                            <Trash2 className="w-3 h-3 text-destructive" />
+                          </Button>
+                        </div>
                       </div>
-                      <p className="text-2xl font-bold text-card-foreground">${account.balance.toLocaleString()}</p>
+                      <p className="text-2xl font-bold text-card-foreground">${Number(account.balance).toLocaleString()}</p>
+                      {account.name_en && <p className="text-xs text-muted-foreground mt-1">{account.name_en}</p>}
                       <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{account.description}</p>
                     </div>
                   ))}
@@ -579,8 +752,8 @@ const Treasury = () => {
                       dataKey="balance"
                       nameKey="name"
                     >
-                      {treasuryAccounts.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      {treasuryAccounts.map((account, index) => (
+                        <Cell key={`cell-${index}`} fill={account.color || COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
@@ -601,6 +774,15 @@ const Treasury = () => {
         {renderTxForm(handleEdit, "حفظ التغييرات")}
       </Modal>
 
+      {/* Treasury Account Modals */}
+      <Modal isOpen={isAddAccountOpen} onClose={() => { setIsAddAccountOpen(false); resetAccountForm(); }} title="إضافة حساب جديد">
+        {renderAccountForm(handleAddAccount, "إضافة الحساب")}
+      </Modal>
+
+      <Modal isOpen={isEditAccountOpen} onClose={() => { setIsEditAccountOpen(false); setSelectedAccount(null); resetAccountForm(); }} title="تعديل الحساب">
+        {renderAccountForm(handleEditAccount, "حفظ التغييرات")}
+      </Modal>
+
       <Modal isOpen={isPaySalaryOpen} onClose={() => { setIsPaySalaryOpen(false); setSelectedEmpForPay(null); }} title="تأكيد صرف الراتب" size="sm">
         {selectedEmpForPay && (
           <div className="space-y-4">
@@ -615,7 +797,7 @@ const Treasury = () => {
             </div>
             <div className="text-center py-4">
               <p className="text-sm text-muted-foreground">مبلغ الراتب</p>
-              <p className="text-3xl font-bold text-primary">${selectedEmpForPay.salary.toLocaleString()}</p>
+              <p className="text-3xl font-bold text-primary">${Number(selectedEmpForPay.salary).toLocaleString()}</p>
               <p className="text-sm text-muted-foreground mt-2">شهر: {salaryMonth}</p>
             </div>
             <div className="flex justify-end gap-3">
@@ -631,7 +813,7 @@ const Treasury = () => {
         onClose={() => setIsPayAllOpen(false)}
         onConfirm={handlePayAllSalaries}
         title="صرف جميع الرواتب"
-        description={`سيتم صرف رواتب ${unpaidCount} موظف بإجمالي $${activeEmployees.filter(e => !isEmployeePaidForMonth(e.id, salaryMonth)).reduce((s, e) => s + e.salary, 0).toLocaleString()}. هل تريد المتابعة؟`}
+        description={`سيتم صرف رواتب ${unpaidCount} موظف بإجمالي $${activeEmployees.filter(e => !isEmployeePaidForMonth(e.id, salaryMonth)).reduce((s, e) => s + Number(e.salary), 0).toLocaleString()}. هل تريد المتابعة؟`}
         confirmText="صرف الرواتب"
       />
 
@@ -641,6 +823,16 @@ const Treasury = () => {
         onConfirm={handleDelete}
         title="حذف المعاملة"
         description="هل أنت متأكد من حذف هذه المعاملة؟"
+        confirmText="حذف"
+        variant="destructive"
+      />
+
+      <ConfirmDialog
+        isOpen={isDeleteAccountOpen}
+        onClose={() => { setIsDeleteAccountOpen(false); setSelectedAccount(null); }}
+        onConfirm={handleDeleteAccount}
+        title="حذف الحساب"
+        description={`هل أنت متأكد من حذف حساب "${selectedAccount?.name}"؟`}
         confirmText="حذف"
         variant="destructive"
       />
