@@ -1,63 +1,49 @@
-import { Download, Search, Calendar } from "lucide-react";
+import { useState } from "react";
+import { Download, Search, Calendar, Pencil } from "lucide-react";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Modal } from "@/components/ui/modal";
+import { useAppStore } from "@/context/StoreContext";
+import { useToast } from "@/hooks/use-toast";
 
-const employees = [
-  {
-    id: 1,
-    name: "أحمد محمد العلي",
-    department: "تطوير التطبيقات",
-    position: "مطور أول",
-    salary: "18,000 ر.س",
-    status: "مدفوع",
-    statusColor: "bg-success text-success-foreground",
-    initials: "أ",
-  },
-  {
-    id: 2,
-    name: "فاطمة أحمد السالم",
-    department: "التصميم",
-    position: "مصمم UI/UX",
-    salary: "14,000 ر.س",
-    status: "مدفوع",
-    statusColor: "bg-success text-success-foreground",
-    initials: "ف",
-  },
-  {
-    id: 3,
-    name: "خالد عبدالله الحربي",
-    department: "تطوير الويب",
-    position: "مطور Full Stack",
-    salary: "16,000 ر.س",
-    status: "قيد المعالجة",
-    statusColor: "bg-warning text-warning-foreground",
-    initials: "خ",
-  },
-  {
-    id: 4,
-    name: "نورة سعد القحطاني",
-    department: "إدارة المشاريع",
-    position: "مدير مشاريع",
-    salary: "20,000 ر.س",
-    status: "مدفوع",
-    statusColor: "bg-success text-success-foreground",
-    initials: "ن",
-  },
-  {
-    id: 5,
-    name: "محمد علي الشهري",
-    department: "ضمان الجودة",
-    position: "مهندس اختبار",
-    salary: "12,000 ر.س",
-    status: "معلق",
-    statusColor: "bg-destructive text-destructive-foreground",
-    initials: "م",
-  },
-];
+const statusLabels = {
+  paid: { label: "مدفوع", color: "bg-success text-success-foreground" },
+  pending: { label: "قيد المعالجة", color: "bg-warning text-warning-foreground" },
+  delayed: { label: "معلق", color: "bg-destructive text-destructive-foreground" },
+};
 
 const Salaries = () => {
+  const { employees, updateEmployee } = useAppStore();
+  const { toast } = useToast();
+  const [search, setSearch] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState("2024-12");
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [selectedEmp, setSelectedEmp] = useState<typeof employees[0] | null>(null);
+  const [editSalary, setEditSalary] = useState("");
+
+  const filteredEmployees = employees.filter(e => 
+    e.name.includes(search) || e.department.includes(search)
+  );
+
+  const totalSalaries = employees.reduce((sum, e) => sum + e.salary, 0);
+  const activeEmployees = employees.filter(e => e.status === "active");
+
+  const handleSalaryUpdate = () => {
+    if (!selectedEmp) return;
+    updateEmployee(selectedEmp.id, { salary: Number(editSalary) });
+    setIsEditOpen(false);
+    setSelectedEmp(null);
+    toast({ title: "تم تحديث الراتب بنجاح" });
+  };
+
+  const openEdit = (emp: typeof employees[0]) => {
+    setSelectedEmp(emp);
+    setEditSalary(String(emp.salary));
+    setIsEditOpen(true);
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -68,10 +54,15 @@ const Salaries = () => {
             <p className="text-muted-foreground">إدارة رواتب الموظفين والمكافآت</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="gap-2">
-              <Calendar className="w-4 h-4" />
-              ديسمبر 2024
-            </Button>
+            <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3">
+              <Calendar className="w-4 h-4 text-muted-foreground" />
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="h-10 bg-transparent text-sm focus:outline-none"
+              />
+            </div>
             <Button className="gap-2">
               <Download className="w-4 h-4" />
               تصدير التقرير
@@ -83,18 +74,21 @@ const Salaries = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-slide-up">
           <div className="bg-card rounded-xl shadow-card p-6">
             <p className="text-sm text-muted-foreground">إجمالي الرواتب</p>
-            <p className="text-2xl font-bold text-card-foreground mt-1">156,000 ر.س</p>
-            <p className="text-sm text-success mt-2">38 موظف</p>
+            <p className="text-2xl font-bold text-card-foreground mt-1">{totalSalaries.toLocaleString()} ر.س</p>
+            <p className="text-sm text-success mt-2">{employees.length} موظف</p>
           </div>
           <div className="bg-card rounded-xl shadow-card p-6">
-            <p className="text-sm text-muted-foreground">تم الدفع</p>
-            <p className="text-2xl font-bold text-success mt-1">132,000 ر.س</p>
-            <p className="text-sm text-muted-foreground mt-2">32 موظف</p>
+            <p className="text-sm text-muted-foreground">الموظفين النشطين</p>
+            <p className="text-2xl font-bold text-success mt-1">{activeEmployees.length}</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              {activeEmployees.reduce((s, e) => s + e.salary, 0).toLocaleString()} ر.س
+            </p>
           </div>
           <div className="bg-card rounded-xl shadow-card p-6">
-            <p className="text-sm text-muted-foreground">قيد الانتظار</p>
-            <p className="text-2xl font-bold text-warning mt-1">24,000 ر.س</p>
-            <p className="text-sm text-muted-foreground mt-2">6 موظفين</p>
+            <p className="text-sm text-muted-foreground">متوسط الراتب</p>
+            <p className="text-2xl font-bold text-primary mt-1">
+              {employees.length > 0 ? Math.round(totalSalaries / employees.length).toLocaleString() : 0} ر.س
+            </p>
           </div>
         </div>
 
@@ -104,7 +98,9 @@ const Salaries = () => {
           <input
             type="text"
             placeholder="بحث عن موظف..."
-            className="w-full h-10 pr-10 pl-4 bg-card border border-border rounded-lg text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full h-10 pr-10 pl-4 bg-card border border-border rounded-lg text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
 
@@ -113,25 +109,16 @@ const Salaries = () => {
           <table className="w-full">
             <thead className="bg-muted/50">
               <tr>
-                <th className="text-right px-6 py-4 text-sm font-semibold text-muted-foreground">
-                  الموظف
-                </th>
-                <th className="text-right px-6 py-4 text-sm font-semibold text-muted-foreground">
-                  القسم
-                </th>
-                <th className="text-right px-6 py-4 text-sm font-semibold text-muted-foreground">
-                  المنصب
-                </th>
-                <th className="text-right px-6 py-4 text-sm font-semibold text-muted-foreground">
-                  الراتب
-                </th>
-                <th className="text-right px-6 py-4 text-sm font-semibold text-muted-foreground">
-                  الحالة
-                </th>
+                <th className="text-right px-6 py-4 text-sm font-semibold text-muted-foreground">الموظف</th>
+                <th className="text-right px-6 py-4 text-sm font-semibold text-muted-foreground">القسم</th>
+                <th className="text-right px-6 py-4 text-sm font-semibold text-muted-foreground">المنصب</th>
+                <th className="text-right px-6 py-4 text-sm font-semibold text-muted-foreground">الراتب</th>
+                <th className="text-right px-6 py-4 text-sm font-semibold text-muted-foreground">الحالة</th>
+                <th className="text-right px-6 py-4 text-sm font-semibold text-muted-foreground">إجراء</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {employees.map((employee, index) => (
+              {filteredEmployees.map((employee, index) => (
                 <tr
                   key={employee.id}
                   className="hover:bg-muted/30 transition-colors animate-fade-in"
@@ -141,25 +128,24 @@ const Salaries = () => {
                     <div className="flex items-center gap-3">
                       <Avatar className="bg-primary">
                         <AvatarFallback className="bg-primary text-primary-foreground">
-                          {employee.initials}
+                          {employee.name.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="font-semibold text-card-foreground">
-                        {employee.name}
-                      </span>
+                      <span className="font-semibold text-card-foreground">{employee.name}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-card-foreground">
-                    {employee.department}
-                  </td>
-                  <td className="px-6 py-4 text-card-foreground">
-                    {employee.position}
-                  </td>
-                  <td className="px-6 py-4 font-semibold text-card-foreground">
-                    {employee.salary}
+                  <td className="px-6 py-4 text-card-foreground">{employee.department}</td>
+                  <td className="px-6 py-4 text-card-foreground">{employee.position}</td>
+                  <td className="px-6 py-4 font-semibold text-card-foreground">{employee.salary.toLocaleString()} ر.س</td>
+                  <td className="px-6 py-4">
+                    <Badge className={employee.status === "active" ? statusLabels.paid.color : statusLabels.pending.color}>
+                      {employee.status === "active" ? statusLabels.paid.label : statusLabels.pending.label}
+                    </Badge>
                   </td>
                   <td className="px-6 py-4">
-                    <Badge className={employee.statusColor}>{employee.status}</Badge>
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(employee)}>
+                      <Pencil className="w-4 h-4" />
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -167,6 +153,29 @@ const Salaries = () => {
           </table>
         </div>
       </div>
+
+      {/* Edit Salary Modal */}
+      <Modal isOpen={isEditOpen} onClose={() => { setIsEditOpen(false); setSelectedEmp(null); }} title="تعديل الراتب" size="sm">
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm text-muted-foreground">الموظف</p>
+            <p className="font-semibold">{selectedEmp?.name}</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">الراتب الجديد (ر.س)</label>
+            <input
+              type="number"
+              value={editSalary}
+              onChange={(e) => setEditSalary(e.target.value)}
+              className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="outline" onClick={() => { setIsEditOpen(false); setSelectedEmp(null); }}>إلغاء</Button>
+            <Button onClick={handleSalaryUpdate}>حفظ التغييرات</Button>
+          </div>
+        </div>
+      </Modal>
     </DashboardLayout>
   );
 };

@@ -9,7 +9,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  LogOut,
+  UserCircle,
+  Landmark,
 } from "lucide-react";
 import raqeemLogo from "@/assets/raqeem-logo-white.png";
 
@@ -18,6 +19,8 @@ const menuItems = [
   { icon: FolderKanban, label: "المشاريع", path: "/projects" },
   { icon: Users, label: "العملاء", path: "/clients" },
   { icon: Building2, label: "الأقسام", path: "/departments" },
+  { icon: UserCircle, label: "الموظفين", path: "/employees" },
+  { icon: Landmark, label: "الخزينة", path: "/treasury" },
   { icon: Wallet, label: "الرواتب", path: "/salaries" },
   { icon: Settings, label: "الإعدادات", path: "/settings" },
 ];
@@ -28,7 +31,7 @@ export function DashboardSidebar() {
 
   return (
     <aside
-      className={`h-screen gradient-primary flex flex-col transition-all duration-300 ${
+      className={`h-screen gradient-primary flex flex-col transition-all duration-300 sticky top-0 ${
         collapsed ? "w-20" : "w-64"
       }`}
     >
@@ -42,7 +45,7 @@ export function DashboardSidebar() {
       </div>
 
       {/* Menu */}
-      <nav className="flex-1 py-6 px-3">
+      <nav className="flex-1 py-6 px-3 overflow-y-auto">
         <ul className="space-y-2">
           {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
