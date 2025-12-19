@@ -14,8 +14,6 @@ import {
   CreditCard,
   CheckCircle2,
   Clock,
-  Briefcase,
-  UserCheck,
   Receipt,
   HandCoins,
   DollarSign,
@@ -706,25 +704,7 @@ const Treasury = () => {
         </div>
 
         {/* Main Statistics Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 animate-slide-up">
-          <div className="bg-card rounded-xl shadow-card p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">المشاريع</p>
-                <p className="text-xl font-bold text-primary">{projects.length}</p>
-              </div>
-              <Briefcase className="w-5 h-5 text-primary" />
-            </div>
-          </div>
-          <div className="bg-card rounded-xl shadow-card p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">العملاء</p>
-                <p className="text-xl font-bold text-primary">{clients.length}</p>
-              </div>
-              <UserCheck className="w-5 h-5 text-primary" />
-            </div>
-          </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-slide-up">
           <div className="bg-card rounded-xl shadow-card p-4">
             <div className="flex items-center justify-between">
               <div>
