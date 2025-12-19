@@ -144,7 +144,9 @@ const Treasury = () => {
 
   // Project payment schedules state
   const [projectPayments, setProjectPayments] = useState<(ProjectPaymentSchedule & { project_name?: string })[]>([]);
-
+  const [isMarkPaidOpen, setIsMarkPaidOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<(ProjectPaymentSchedule & { project_name?: string }) | null>(null);
+  const [paymentAccountId, setPaymentAccountId] = useState("");
   const [formData, setFormData] = useState({
     type: "income" as Transaction["type"],
     category: "",
@@ -498,6 +500,48 @@ const Treasury = () => {
       status: tx.status,
     });
     setIsEditOpen(true);
+  };
+
+  // Mark project payment as paid
+  const handleMarkPaymentPaid = async () => {
+    if (!selectedPayment || !paymentAccountId) return;
+    
+    // Create income transaction
+    const transaction = await addTransaction({
+      type: "income",
+      category: "إيرادات مشاريع",
+      amount: Number(selectedPayment.amount),
+      description: `دفعة ${selectedPayment.title} - ${selectedPayment.project_name}`,
+      date: new Date().toISOString().split("T")[0],
+      project_id: selectedPayment.project_id,
+      account_id: paymentAccountId,
+      status: "completed",
+    });
+
+    if (transaction) {
+      // Update payment schedule status
+      await supabase
+        .from("project_payment_schedules")
+        .update({ 
+          status: "paid", 
+          paid_at: new Date().toISOString(),
+          transaction_id: transaction.id 
+        })
+        .eq("id", selectedPayment.id);
+
+      // Update local state
+      setProjectPayments(prev => prev.map(p => 
+        p.id === selectedPayment.id 
+          ? { ...p, status: "paid", paid_at: new Date().toISOString(), transaction_id: transaction.id }
+          : p
+      ));
+
+      toast({ title: "تم تسجيل الدفعة بنجاح", description: `$${Number(selectedPayment.amount).toLocaleString()}` });
+    }
+
+    setIsMarkPaidOpen(false);
+    setSelectedPayment(null);
+    setPaymentAccountId("");
   };
 
   const COLORS = ["hsl(216, 100%, 50%)", "hsl(142, 76%, 36%)", "hsl(38, 92%, 50%)", "hsl(280, 67%, 50%)", "hsl(340, 82%, 52%)"];
@@ -993,12 +1037,13 @@ const Treasury = () => {
                     <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">المبلغ</th>
                     <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">تاريخ الاستحقاق</th>
                     <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">الحالة</th>
+                    <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {projectPayments.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
+                      <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
                         <FolderKanban className="w-10 h-10 mx-auto mb-2 opacity-50" />
                         <p>لا توجد دفعات مشاريع مستحقة</p>
                         <p className="text-sm mt-1">أضف مواعيد الدفع من داخل تفاصيل المشروع</p>
@@ -1029,6 +1074,22 @@ const Treasury = () => {
                             <Badge className={payment.status === "paid" ? "bg-success text-success-foreground" : isOverdue ? "bg-destructive text-destructive-foreground" : "bg-warning text-warning-foreground"}>
                               {payment.status === "paid" ? "مدفوع" : isOverdue ? "متأخر" : "قيد الانتظار"}
                             </Badge>
+                          </td>
+                          <td className="px-4 py-3">
+                            {payment.status !== "paid" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-1"
+                                onClick={() => {
+                                  setSelectedPayment(payment);
+                                  setIsMarkPaidOpen(true);
+                                }}
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                تسجيل كمدفوع
+                              </Button>
+                            )}
                           </td>
                         </tr>
                       );
@@ -1421,6 +1482,50 @@ const Treasury = () => {
         confirmText="حذف"
         variant="destructive"
       />
+
+      {/* Mark Payment as Paid Modal */}
+      <Modal 
+        isOpen={isMarkPaidOpen} 
+        onClose={() => { setIsMarkPaidOpen(false); setSelectedPayment(null); setPaymentAccountId(""); }} 
+        title="تسجيل الدفعة كمدفوعة"
+        size="sm"
+      >
+        {selectedPayment && (
+          <div className="space-y-4">
+            <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">المشروع:</span>
+                <span className="font-medium">{selectedPayment.project_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">الدفعة:</span>
+                <span className="font-medium">{selectedPayment.title}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">المبلغ:</span>
+                <span className="font-bold text-primary">${Number(selectedPayment.amount).toLocaleString()}</span>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">الحساب المستلم *</label>
+              <select
+                value={paymentAccountId}
+                onChange={(e) => setPaymentAccountId(e.target.value)}
+                className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">اختر الحساب</option>
+                {treasuryAccounts.map(acc => (
+                  <option key={acc.id} value={acc.id}>{acc.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="outline" onClick={() => { setIsMarkPaidOpen(false); setSelectedPayment(null); setPaymentAccountId(""); }}>إلغاء</Button>
+              <Button onClick={handleMarkPaymentPaid} disabled={!paymentAccountId}>تسجيل كمدفوع</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </DashboardLayout>
   );
 };
