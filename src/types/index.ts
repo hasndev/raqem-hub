@@ -1,71 +1,13 @@
-export interface Project {
-  id: string;
-  name: string;
-  client: string;
-  clientId: string;
-  department: string;
-  departmentId: string;
-  progress: number;
-  status: "pending" | "in_progress" | "completed" | "on_hold";
-  startDate: string;
-  endDate?: string;
-  budget: number;
-  description?: string;
-}
-
-export interface Client {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  address?: string;
-  type: "government" | "company" | "individual";
-  notes?: string;
-  createdAt: string;
-}
-
-export interface Department {
-  id: string;
-  name: string;
-  description: string;
-  managerId?: string;
-  color: string;
-}
-
-export interface Employee {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  departmentId: string;
-  department: string;
-  position: string;
-  salary: number;
-  startDate: string;
-  status: "active" | "inactive" | "on_leave";
-}
-
-export interface Transaction {
-  id: string;
-  type: "income" | "expense" | "withdrawal" | "deposit";
-  category: string;
-  amount: number;
-  description: string;
-  date: string;
-  projectId?: string;
-  projectName?: string;
-  status: "completed" | "pending" | "cancelled";
-}
-
-export interface TreasuryAccount {
-  id: string;
-  name: string;
-  nameEn: string;
-  percentage: number;
-  balance: number;
-  description: string;
-  color: string;
-}
+// Re-export types from useStore for backward compatibility
+export type { 
+  Department, 
+  Client, 
+  Employee, 
+  Project, 
+  Transaction, 
+  TreasuryAccount,
+  SalaryPayment 
+} from "@/hooks/useStore";
 
 export const projectStatuses = {
   pending: { label: "قيد البدء", color: "bg-warning text-warning-foreground" },
@@ -85,4 +27,10 @@ export const transactionTypes = {
   expense: { label: "مصروف", color: "text-destructive" },
   withdrawal: { label: "سحب", color: "text-warning" },
   deposit: { label: "إيداع", color: "text-primary" },
+};
+
+export const employeeStatuses = {
+  active: { label: "نشط", color: "bg-success text-success-foreground" },
+  inactive: { label: "غير نشط", color: "bg-muted text-muted-foreground" },
+  on_leave: { label: "في إجازة", color: "bg-warning text-warning-foreground" },
 };

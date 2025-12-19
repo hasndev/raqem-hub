@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Search, Filter, Eye, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Eye, Pencil, Trash2 } from "lucide-react";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,31 +20,26 @@ const Projects = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [formData, setFormData] = useState({
-    name: "", clientId: "", departmentId: "", budget: "", startDate: "", description: "", status: "pending" as Project["status"]
+    name: "", client_id: "", department_id: "", budget: "", start_date: "", description: "", status: "pending" as Project["status"]
   });
 
   const filteredProjects = projects.filter(p => 
-    p.name.includes(search) || p.client.includes(search)
+    p.name.includes(search) || p.client?.name?.includes(search)
   );
 
   const resetForm = () => {
-    setFormData({ name: "", clientId: "", departmentId: "", budget: "", startDate: "", description: "", status: "pending" });
+    setFormData({ name: "", client_id: "", department_id: "", budget: "", start_date: "", description: "", status: "pending" });
   };
 
-  const handleAdd = () => {
-    const client = clients.find(c => c.id === formData.clientId);
-    const dept = departments.find(d => d.id === formData.departmentId);
-    if (!client || !dept) return;
-    
-    addProject({
+  const handleAdd = async () => {
+    await addProject({
       name: formData.name,
-      clientId: formData.clientId,
-      client: client.name,
-      departmentId: formData.departmentId,
-      department: dept.name,
+      client_id: formData.client_id || null,
+      department_id: formData.department_id || null,
       budget: Number(formData.budget),
-      startDate: formData.startDate,
-      description: formData.description,
+      start_date: formData.start_date || null,
+      end_date: null,
+      description: formData.description || null,
       status: formData.status,
       progress: 0,
     });
@@ -53,20 +48,16 @@ const Projects = () => {
     toast({ title: "تم إضافة المشروع بنجاح" });
   };
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!selectedProject) return;
-    const client = clients.find(c => c.id === formData.clientId);
-    const dept = departments.find(d => d.id === formData.departmentId);
     
-    updateProject(selectedProject.id, {
+    await updateProject(selectedProject.id, {
       name: formData.name,
-      clientId: formData.clientId,
-      client: client?.name || selectedProject.client,
-      departmentId: formData.departmentId,
-      department: dept?.name || selectedProject.department,
+      client_id: formData.client_id || null,
+      department_id: formData.department_id || null,
       budget: Number(formData.budget),
-      startDate: formData.startDate,
-      description: formData.description,
+      start_date: formData.start_date || null,
+      description: formData.description || null,
       status: formData.status,
     });
     setIsEditOpen(false);
@@ -75,9 +66,9 @@ const Projects = () => {
     toast({ title: "تم تحديث المشروع بنجاح" });
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selectedProject) return;
-    deleteProject(selectedProject.id);
+    await deleteProject(selectedProject.id);
     setIsDeleteOpen(false);
     setSelectedProject(null);
     toast({ title: "تم حذف المشروع", variant: "destructive" });
@@ -87,10 +78,10 @@ const Projects = () => {
     setSelectedProject(project);
     setFormData({
       name: project.name,
-      clientId: project.clientId,
-      departmentId: project.departmentId,
+      client_id: project.client_id || "",
+      department_id: project.department_id || "",
       budget: String(project.budget),
-      startDate: project.startDate,
+      start_date: project.start_date || "",
       description: project.description || "",
       status: project.status,
     });
@@ -123,8 +114,8 @@ const Projects = () => {
         <div>
           <label className="block text-sm font-medium mb-2">العميل</label>
           <select
-            value={formData.clientId}
-            onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
+            value={formData.client_id}
+            onChange={(e) => setFormData({ ...formData, client_id: e.target.value })}
             className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
             <option value="">اختر العميل</option>
@@ -134,8 +125,8 @@ const Projects = () => {
         <div>
           <label className="block text-sm font-medium mb-2">القسم</label>
           <select
-            value={formData.departmentId}
-            onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
+            value={formData.department_id}
+            onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
             className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
             <option value="">اختر القسم</option>
@@ -145,7 +136,7 @@ const Projects = () => {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-2">الميزانية (ر.س)</label>
+          <label className="block text-sm font-medium mb-2">الميزانية ($)</label>
           <input
             type="number"
             value={formData.budget}
@@ -157,8 +148,8 @@ const Projects = () => {
           <label className="block text-sm font-medium mb-2">تاريخ البدء</label>
           <input
             type="date"
-            value={formData.startDate}
-            onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+            value={formData.start_date}
+            onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
             className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
@@ -238,10 +229,10 @@ const Projects = () => {
                 <tr key={project.id} className="hover:bg-muted/30 transition-colors animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
                   <td className="px-6 py-4">
                     <div className="font-semibold text-card-foreground">{project.name}</div>
-                    <div className="text-sm text-muted-foreground">بدء: {project.startDate}</div>
+                    <div className="text-sm text-muted-foreground">بدء: {project.start_date || "-"}</div>
                   </td>
-                  <td className="px-6 py-4 text-card-foreground">{project.client}</td>
-                  <td className="px-6 py-4 text-card-foreground">{project.department}</td>
+                  <td className="px-6 py-4 text-card-foreground">{project.client?.name || "-"}</td>
+                  <td className="px-6 py-4 text-card-foreground">{project.department?.name || "-"}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <Progress value={project.progress} className="h-2 w-24" />
@@ -254,7 +245,7 @@ const Projects = () => {
                     </Badge>
                   </td>
                   <td className="px-6 py-4 font-medium text-card-foreground">
-                    {project.budget.toLocaleString()} ر.س
+                    ${project.budget.toLocaleString()}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
@@ -273,20 +264,20 @@ const Projects = () => {
               ))}
             </tbody>
           </table>
+          {filteredProjects.length === 0 && (
+            <p className="text-center text-muted-foreground py-8">لا توجد مشاريع</p>
+          )}
         </div>
       </div>
 
-      {/* Add Modal */}
       <Modal isOpen={isAddOpen} onClose={() => { setIsAddOpen(false); resetForm(); }} title="إضافة مشروع جديد">
         <ProjectForm onSubmit={handleAdd} submitText="إضافة المشروع" />
       </Modal>
 
-      {/* Edit Modal */}
       <Modal isOpen={isEditOpen} onClose={() => { setIsEditOpen(false); setSelectedProject(null); resetForm(); }} title="تعديل المشروع">
         <ProjectForm onSubmit={handleEdit} submitText="حفظ التغييرات" />
       </Modal>
 
-      {/* View Modal */}
       <Modal isOpen={isViewOpen} onClose={() => { setIsViewOpen(false); setSelectedProject(null); }} title="تفاصيل المشروع" size="lg">
         {selectedProject && (
           <div className="space-y-6">
@@ -303,19 +294,19 @@ const Projects = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">العميل</p>
-                <p className="font-medium">{selectedProject.client}</p>
+                <p className="font-medium">{selectedProject.client?.name || "-"}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">القسم</p>
-                <p className="font-medium">{selectedProject.department}</p>
+                <p className="font-medium">{selectedProject.department?.name || "-"}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">الميزانية</p>
-                <p className="font-medium text-primary">{selectedProject.budget.toLocaleString()} ر.س</p>
+                <p className="font-medium text-primary">${selectedProject.budget.toLocaleString()}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">تاريخ البدء</p>
-                <p className="font-medium">{selectedProject.startDate}</p>
+                <p className="font-medium">{selectedProject.start_date || "-"}</p>
               </div>
             </div>
             <div>
@@ -335,7 +326,6 @@ const Projects = () => {
         )}
       </Modal>
 
-      {/* Delete Confirm */}
       <ConfirmDialog
         isOpen={isDeleteOpen}
         onClose={() => { setIsDeleteOpen(false); setSelectedProject(null); }}
