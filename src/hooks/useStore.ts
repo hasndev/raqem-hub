@@ -434,6 +434,16 @@ export function useStore() {
     setTreasuryAccounts(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
   };
 
+  const deleteTreasuryAccount = async (id: string) => {
+    const { error } = await supabase.from("treasury_accounts").delete().eq("id", id);
+    
+    if (error) {
+      toast({ title: "خطأ في حذف الحساب", description: error.message, variant: "destructive" });
+      return;
+    }
+    setTreasuryAccounts(prev => prev.filter(a => a.id !== id));
+  };
+
   // Salary Payments
   const addSalaryPayment = async (payment: Omit<SalaryPayment, "id" | "paid_at" | "paid_by">) => {
     const { data: userData } = await supabase.auth.getUser();
@@ -479,7 +489,7 @@ export function useStore() {
     employees, addEmployee, updateEmployee, deleteEmployee,
     projects, addProject, updateProject, deleteProject,
     transactions, addTransaction, updateTransaction, deleteTransaction,
-    treasuryAccounts, addTreasuryAccount, updateTreasuryAccount, setTreasuryAccounts,
+    treasuryAccounts, addTreasuryAccount, updateTreasuryAccount, deleteTreasuryAccount, setTreasuryAccounts,
     salaryPayments, addSalaryPayment, isEmployeePaidForMonth,
     
     getStats,
