@@ -14,6 +14,8 @@ import {
   UserCog,
   LogOut,
   User,
+  StickyNote,
+  KeyRound,
 } from "lucide-react";
 import raqeemLogo from "@/assets/raqeem-logo-white.png";
 import { useAuth } from "@/context/AuthContext";
@@ -27,6 +29,7 @@ const menuItems = [
   { icon: UserCircle, label: "الموظفين", path: "/employees" },
   { icon: Landmark, label: "الخزينة", path: "/treasury" },
   { icon: Wallet, label: "الرواتب", path: "/salaries" },
+  { icon: StickyNote, label: "الملاحظات", path: "/notes" },
   { icon: Settings, label: "الإعدادات", path: "/settings" },
 ];
 
@@ -82,21 +85,38 @@ export function DashboardSidebar() {
 
           {/* Admin Only: Users Management */}
           {isAdmin && (
-            <li>
-              <NavLink
-                to="/users"
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                  location.pathname === "/users"
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-soft"
-                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                }`}
-              >
-                <UserCog className="w-5 h-5 flex-shrink-0" />
-                {!collapsed && (
-                  <span className="font-medium text-sm">إدارة المستخدمين</span>
-                )}
-              </NavLink>
-            </li>
+            <>
+              <li>
+                <NavLink
+                  to="/users"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                    location.pathname === "/users"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-soft"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  }`}
+                >
+                  <UserCog className="w-5 h-5 flex-shrink-0" />
+                  {!collapsed && (
+                    <span className="font-medium text-sm">إدارة المستخدمين</span>
+                  )}
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/credentials"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                    location.pathname === "/credentials"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-soft"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  }`}
+                >
+                  <KeyRound className="w-5 h-5 flex-shrink-0" />
+                  {!collapsed && (
+                    <span className="font-medium text-sm">كلمات المرور</span>
+                  )}
+                </NavLink>
+              </li>
+            </>
           )}
         </ul>
       </nav>
