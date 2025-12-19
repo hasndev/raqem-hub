@@ -50,6 +50,45 @@ export type Database = {
         }
         Relationships: []
       }
+      credentials_vault: {
+        Row: {
+          category: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          password: string | null
+          platform_name: string
+          updated_at: string
+          url: string | null
+          username: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          password?: string | null
+          platform_name: string
+          updated_at?: string
+          url?: string | null
+          username?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          password?: string | null
+          platform_name?: string
+          updated_at?: string
+          url?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
       departments: {
         Row: {
           color: string | null
@@ -132,6 +171,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notes: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean | null
+          link: string | null
+          message: string | null
+          title: string
+          type: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          link?: string | null
+          message?: string | null
+          title: string
+          type?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          link?: string | null
+          message?: string | null
+          title?: string
+          type?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {

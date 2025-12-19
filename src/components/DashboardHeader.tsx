@@ -1,7 +1,19 @@
-import { Bell, Search, User } from "lucide-react";
+import { Search } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { NotificationsDropdown } from "@/components/NotificationsDropdown";
+import { useAuth } from "@/context/AuthContext";
 
 export function DashboardHeader() {
+  const { user, profile, roles } = useAuth();
+
+  const getRoleLabel = () => {
+    if (roles.includes("admin")) return "مدير النظام";
+    if (roles.includes("supervisor")) return "مشرف";
+    if (roles.includes("accountant")) return "محاسب";
+    if (roles.includes("employee")) return "موظف";
+    return "مستخدم";
+  };
+
   return (
     <header className="h-16 bg-card border-b border-border px-6 flex items-center justify-between">
       {/* Search */}
@@ -17,20 +29,19 @@ export function DashboardHeader() {
       {/* Actions */}
       <div className="flex items-center gap-4">
         {/* Notifications */}
-        <button className="relative p-2 hover:bg-muted rounded-lg transition-colors">
-          <Bell className="w-5 h-5 text-muted-foreground" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full"></span>
-        </button>
+        <NotificationsDropdown />
 
         {/* Profile */}
         <div className="flex items-center gap-3 pr-4 border-r border-border">
           <div className="text-left">
-            <p className="text-sm font-semibold text-card-foreground">أحمد محمد</p>
-            <p className="text-xs text-muted-foreground">مدير النظام</p>
+            <p className="text-sm font-semibold text-card-foreground">
+              {profile?.full_name || "مستخدم"}
+            </p>
+            <p className="text-xs text-muted-foreground">{getRoleLabel()}</p>
           </div>
           <Avatar className="bg-primary">
             <AvatarFallback className="bg-primary text-primary-foreground">
-              أ
+              {profile?.full_name?.charAt(0) || user?.email?.charAt(0) || "U"}
             </AvatarFallback>
           </Avatar>
         </div>

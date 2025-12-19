@@ -17,6 +17,8 @@ import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import Account from "./pages/Account";
 import Users from "./pages/Users";
+import Notes from "./pages/Notes";
+import CredentialsVault from "./pages/CredentialsVault";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +43,8 @@ const App = () => (
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
               <Route path="/users" element={<ProtectedRoute requiredRole="admin"><Users /></ProtectedRoute>} />
+              <Route path="/notes" element={<ProtectedRoute><Notes /></ProtectedRoute>} />
+              <Route path="/credentials" element={<ProtectedRoute requiredRole="admin"><CredentialsVault /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
