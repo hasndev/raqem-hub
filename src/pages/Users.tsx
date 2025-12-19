@@ -17,6 +17,11 @@ import {
   ShieldCheck,
   UserCog,
   Calculator,
+  Mail,
+  Lock,
+  User,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 type AppRole = "admin" | "supervisor" | "accountant" | "employee";
@@ -28,6 +33,13 @@ interface UserProfile {
   email: string;
   roles: AppRole[];
   created_at: string;
+}
+
+interface NewUserForm {
+  email: string;
+  password: string;
+  full_name: string;
+  roles: AppRole[];
 }
 
 const roleLabels: Record<AppRole, string> = {
@@ -45,7 +57,7 @@ const roleIcons: Record<AppRole, React.ReactNode> = {
 };
 
 const UsersPage = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, session } = useAuth();
   const { toast } = useToast();
 
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -53,8 +65,17 @@ const UsersPage = () => {
   const [loading, setLoading] = useState(true);
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<AppRole[]>([]);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newUser, setNewUser] = useState<NewUserForm>({
+    email: "",
+    password: "",
+    full_name: "",
+    roles: [],
+  });
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -162,6 +183,63 @@ const UsersPage = () => {
     }
   };
 
+  const handleCreateUser = async () => {
+    if (!newUser.email || !newUser.password || !newUser.full_name) {
+      toast({
+        title: "خطأ",
+        description: "يرجى ملء جميع الحقول المطلوبة",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newUser.password.length < 6) {
+      toast({
+        title: "خطأ",
+        description: "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-user", {
+        body: {
+          email: newUser.email,
+          password: newUser.password,
+          full_name: newUser.full_name,
+          roles: newUser.roles,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({ title: "تم إنشاء المستخدم بنجاح" });
+      setIsAddUserOpen(false);
+      setNewUser({ email: "", password: "", full_name: "", roles: [] });
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: "خطأ في إنشاء المستخدم",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleToggleNewUserRole = (role: AppRole) => {
+    setNewUser((prev) => ({
+      ...prev,
+      roles: prev.roles.includes(role)
+        ? prev.roles.filter((r) => r !== role)
+        : [...prev.roles, role],
+    }));
+  };
+
   const filteredUsers = users.filter(
     (u) =>
       u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -192,6 +270,10 @@ const UsersPage = () => {
             <h1 className="text-2xl font-bold text-foreground">إدارة المستخدمين</h1>
             <p className="text-muted-foreground">إدارة حسابات وصلاحيات المستخدمين</p>
           </div>
+          <Button onClick={() => setIsAddUserOpen(true)} className="gap-2">
+            <UserPlus className="w-4 h-4" />
+            إضافة مستخدم
+          </Button>
         </div>
 
         {/* Stats */}
@@ -405,6 +487,109 @@ const UsersPage = () => {
         confirmText="إزالة"
         variant="destructive"
       />
+
+      {/* Add User Modal */}
+      <Modal
+        isOpen={isAddUserOpen}
+        onClose={() => {
+          setIsAddUserOpen(false);
+          setNewUser({ email: "", password: "", full_name: "", roles: [] });
+        }}
+        title="إضافة مستخدم جديد"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">الاسم الكامل *</label>
+            <div className="relative">
+              <User className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <input
+                type="text"
+                value={newUser.full_name}
+                onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
+                placeholder="أدخل الاسم الكامل"
+                className="w-full h-10 pr-10 pl-4 bg-muted border border-border rounded-lg text-sm"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">البريد الإلكتروني *</label>
+            <div className="relative">
+              <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <input
+                type="email"
+                value={newUser.email}
+                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                placeholder="example@email.com"
+                className="w-full h-10 pr-10 pl-4 bg-muted border border-border rounded-lg text-sm"
+                dir="ltr"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">كلمة المرور *</label>
+            <div className="relative">
+              <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <input
+                type={showPassword ? "text" : "password"}
+                value={newUser.password}
+                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                placeholder="6 أحرف على الأقل"
+                className="w-full h-10 pr-10 pl-10 bg-muted border border-border rounded-lg text-sm"
+                dir="ltr"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">الصلاحيات (اختياري):</label>
+            <div className="grid grid-cols-2 gap-2">
+              {(Object.keys(roleLabels) as AppRole[]).map((role) => (
+                <button
+                  key={role}
+                  type="button"
+                  onClick={() => handleToggleNewUserRole(role)}
+                  className={`flex items-center gap-2 p-3 rounded-lg border transition-all ${
+                    newUser.roles.includes(role)
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted border-border hover:border-primary"
+                  }`}
+                >
+                  {roleIcons[role]}
+                  {roleLabels[role]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsAddUserOpen(false);
+                setNewUser({ email: "", password: "", full_name: "", roles: [] });
+              }}
+            >
+              إلغاء
+            </Button>
+            <Button onClick={handleCreateUser} disabled={isCreating}>
+              {isCreating ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground" />
+              ) : (
+                "إضافة المستخدم"
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </DashboardLayout>
   );
 };
