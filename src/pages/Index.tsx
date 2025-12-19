@@ -72,7 +72,7 @@ const Index = () => {
             iconColor="bg-destructive/10 text-destructive"
           />
           <StatsCard
-            title="المتبقي في الخزينة"
+            title="الخزينة"
             value={`$${totalBalance.toLocaleString()}`}
             icon={Landmark}
             iconColor="bg-primary/10 text-primary"
