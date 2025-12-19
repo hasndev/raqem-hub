@@ -52,7 +52,7 @@ export function RevenueChart() {
                 borderRadius: "8px",
                 boxShadow: "0 4px 12px hsl(220, 25%, 10%, 0.1)",
               }}
-              formatter={(value: number) => [`${value.toLocaleString()} ر.س`, "الإيرادات"]}
+              formatter={(value: number) => [`$${value.toLocaleString()}`, "الإيرادات"]}
             />
             <Area
               type="monotone"
