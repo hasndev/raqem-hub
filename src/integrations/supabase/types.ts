@@ -168,44 +168,266 @@ export type Database = {
           },
         ]
       }
+      project_assignments: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          employee_id: string
+          hours_allocated: number | null
+          id: string
+          is_lead: boolean | null
+          project_id: string
+          role: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          employee_id: string
+          hours_allocated?: number | null
+          id?: string
+          is_lead?: boolean | null
+          project_id: string
+          role?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          employee_id?: string
+          hours_allocated?: number | null
+          id?: string
+          is_lead?: boolean | null
+          project_id?: string
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_assignments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_assignments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_milestones: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          project_id: string
+          status: string | null
+          title: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          project_id: string
+          status?: string | null
+          title: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          project_id?: string
+          status?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_milestones_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_tasks: {
+        Row: {
+          actual_hours: number | null
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          estimated_hours: number | null
+          id: string
+          priority: string | null
+          project_id: string
+          status: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          actual_hours?: number | null
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          estimated_hours?: number | null
+          id?: string
+          priority?: string | null
+          project_id: string
+          status?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          actual_hours?: number | null
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          estimated_hours?: number | null
+          id?: string
+          priority?: string | null
+          project_id?: string
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_time_logs: {
+        Row: {
+          created_at: string | null
+          date: string | null
+          description: string | null
+          employee_id: string
+          hours: number
+          id: string
+          project_id: string
+          task_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date?: string | null
+          description?: string | null
+          employee_id: string
+          hours: number
+          id?: string
+          project_id: string
+          task_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string | null
+          description?: string | null
+          employee_id?: string
+          hours?: number
+          id?: string
+          project_id?: string
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_time_logs_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_time_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_time_logs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "project_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
+          actual_hours: number | null
           budget: number | null
           client_id: string | null
           created_at: string | null
           department_id: string | null
           description: string | null
           end_date: string | null
+          estimated_hours: number | null
           id: string
           name: string
+          notes: string | null
+          priority: string | null
           progress: number | null
           start_date: string | null
           status: string | null
           updated_at: string | null
         }
         Insert: {
+          actual_hours?: number | null
           budget?: number | null
           client_id?: string | null
           created_at?: string | null
           department_id?: string | null
           description?: string | null
           end_date?: string | null
+          estimated_hours?: number | null
           id?: string
           name: string
+          notes?: string | null
+          priority?: string | null
           progress?: number | null
           start_date?: string | null
           status?: string | null
           updated_at?: string | null
         }
         Update: {
+          actual_hours?: number | null
           budget?: number | null
           client_id?: string | null
           created_at?: string | null
           department_id?: string | null
           description?: string | null
           end_date?: string | null
+          estimated_hours?: number | null
           id?: string
           name?: string
+          notes?: string | null
+          priority?: string | null
           progress?: number | null
           start_date?: string | null
           status?: string | null

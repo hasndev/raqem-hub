@@ -49,6 +49,62 @@ export interface Project {
   end_date: string | null;
   budget: number;
   description: string | null;
+  priority: "low" | "medium" | "high" | "urgent";
+  estimated_hours: number;
+  actual_hours: number;
+  notes: string | null;
+}
+
+export interface ProjectAssignment {
+  id: string;
+  project_id: string;
+  employee_id: string;
+  employee?: Employee | null;
+  role: string;
+  assigned_at: string;
+  assigned_by: string | null;
+  hours_allocated: number;
+  is_lead: boolean;
+}
+
+export interface ProjectTask {
+  id: string;
+  project_id: string;
+  assigned_to: string | null;
+  assignee?: Employee | null;
+  title: string;
+  description: string | null;
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+  priority: "low" | "medium" | "high" | "urgent";
+  estimated_hours: number;
+  actual_hours: number;
+  due_date: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectMilestone {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string | null;
+  due_date: string | null;
+  completed_at: string | null;
+  status: "pending" | "completed";
+  created_at: string;
+}
+
+export interface ProjectTimeLog {
+  id: string;
+  project_id: string;
+  task_id: string | null;
+  employee_id: string;
+  employee?: Employee | null;
+  hours: number;
+  date: string;
+  description: string | null;
+  created_at: string;
 }
 
 export interface Transaction {
