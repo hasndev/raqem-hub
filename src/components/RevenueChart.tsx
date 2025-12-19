@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   AreaChart,
   Area,
@@ -7,18 +8,51 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { useAppStore } from "@/context/StoreContext";
 
-const data = [
-  { month: "يناير", revenue: 45000 },
-  { month: "فبراير", revenue: 52000 },
-  { month: "مارس", revenue: 48000 },
-  { month: "أبريل", revenue: 61000 },
-  { month: "مايو", revenue: 55000 },
-  { month: "يونيو", revenue: 67000 },
-  { month: "يوليو", revenue: 72000 },
+const monthNames = [
+  "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+  "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
 ];
 
 export function RevenueChart() {
+  const { transactions } = useAppStore();
+
+  const chartData = useMemo(() => {
+    // Get last 7 months
+    const now = new Date();
+    const months: { month: string; revenue: number; expenses: number }[] = [];
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthName = monthNames[date.getMonth()];
+      
+      // Calculate revenue and expenses for this month
+      const monthTransactions = transactions.filter(t => {
+        if (!t.date) return false;
+        const tDate = new Date(t.date);
+        return tDate.getFullYear() === date.getFullYear() && 
+               tDate.getMonth() === date.getMonth() &&
+               t.status === "completed";
+      });
+      
+      const revenue = monthTransactions
+        .filter(t => t.type === "income")
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+        
+      const expenses = monthTransactions
+        .filter(t => t.type === "expense")
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+      
+      months.push({ month: monthName, revenue, expenses });
+    }
+    
+    return months;
+  }, [transactions]);
+
+  const hasData = chartData.some(d => d.revenue > 0 || d.expenses > 0);
+
   return (
     <div className="bg-card rounded-xl shadow-card animate-slide-up">
       <div className="p-6 border-b border-border">
@@ -26,44 +60,65 @@ export function RevenueChart() {
         <p className="text-sm text-muted-foreground">نظرة عامة على إيرادات الأشهر السبعة الماضية</p>
       </div>
       <div className="p-6">
-        <ResponsiveContainer width="100%" height={300}>
-          <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(216, 100%, 50%)" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="hsl(216, 100%, 50%)" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(214, 20%, 90%)" />
-            <XAxis
-              dataKey="month"
-              tick={{ fill: "hsl(220, 10%, 45%)", fontSize: 12 }}
-              axisLine={{ stroke: "hsl(214, 20%, 90%)" }}
-            />
-            <YAxis
-              tick={{ fill: "hsl(220, 10%, 45%)", fontSize: 12 }}
-              axisLine={{ stroke: "hsl(214, 20%, 90%)" }}
-              tickFormatter={(value) => `${value / 1000}ك`}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "hsl(0, 0%, 100%)",
-                border: "1px solid hsl(214, 20%, 90%)",
-                borderRadius: "8px",
-                boxShadow: "0 4px 12px hsl(220, 25%, 10%, 0.1)",
-              }}
-              formatter={(value: number) => [`$${value.toLocaleString()}`, "الإيرادات"]}
-            />
-            <Area
-              type="monotone"
-              dataKey="revenue"
-              stroke="hsl(216, 100%, 50%)"
-              strokeWidth={2}
-              fillOpacity={1}
-              fill="url(#colorRevenue)"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+        {hasData ? (
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--destructive))" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="hsl(var(--destructive))" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis
+                dataKey="month"
+                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                axisLine={{ stroke: "hsl(var(--border))" }}
+              />
+              <YAxis
+                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                axisLine={{ stroke: "hsl(var(--border))" }}
+                tickFormatter={(value) => value >= 1000 ? `${value / 1000}ك` : value}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "hsl(var(--card))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "8px",
+                  boxShadow: "0 4px 12px hsl(var(--foreground) / 0.1)",
+                }}
+                formatter={(value: number, name: string) => [
+                  `$${value.toLocaleString()}`,
+                  name === "revenue" ? "الإيرادات" : "المصروفات"
+                ]}
+              />
+              <Area
+                type="monotone"
+                dataKey="revenue"
+                stroke="hsl(var(--primary))"
+                strokeWidth={2}
+                fillOpacity={1}
+                fill="url(#colorRevenue)"
+              />
+              <Area
+                type="monotone"
+                dataKey="expenses"
+                stroke="hsl(var(--destructive))"
+                strokeWidth={2}
+                fillOpacity={1}
+                fill="url(#colorExpenses)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+            لا توجد بيانات لعرضها
+          </div>
+        )}
       </div>
     </div>
   );
