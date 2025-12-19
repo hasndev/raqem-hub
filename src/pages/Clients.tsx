@@ -92,7 +92,7 @@ const Clients = () => {
     setIsEditOpen(true);
   };
 
-  const ClientForm = ({ onSubmit, submitText }: { onSubmit: () => void; submitText: string }) => (
+  const renderForm = (onSubmit: () => void, submitText: string) => (
     <div className="space-y-4">
       <div>
         <label className="block text-sm font-medium mb-2">اسم العميل</label>
@@ -251,11 +251,11 @@ const Clients = () => {
       </div>
 
       <Modal isOpen={isAddOpen} onClose={() => { setIsAddOpen(false); resetForm(); }} title="إضافة عميل جديد">
-        <ClientForm onSubmit={handleAdd} submitText="إضافة العميل" />
+        {renderForm(handleAdd, "إضافة العميل")}
       </Modal>
 
       <Modal isOpen={isEditOpen} onClose={() => { setIsEditOpen(false); setSelectedClient(null); resetForm(); }} title="تعديل بيانات العميل">
-        <ClientForm onSubmit={handleEdit} submitText="حفظ التغييرات" />
+        {renderForm(handleEdit, "حفظ التغييرات")}
       </Modal>
 
       <Modal isOpen={isViewOpen} onClose={() => { setIsViewOpen(false); setSelectedClient(null); }} title="تفاصيل العميل" size="lg">
