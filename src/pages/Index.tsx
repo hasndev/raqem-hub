@@ -16,9 +16,9 @@ import { useAppStore } from "@/context/StoreContext";
 import { Button } from "@/components/ui/button";
 
 const Index = () => {
-  const { projects, clients, getStats, treasuryAccounts, loading, refetch } = useAppStore();
+  const { projects, clients, getStats, loading, refetch } = useAppStore();
   const stats = getStats();
-  const totalBalance = treasuryAccounts.reduce((s, a) => s + Number(a.balance), 0);
+  const netBalance = stats.totalRevenue - stats.totalExpenses;
 
   return (
     <DashboardLayout>
@@ -73,7 +73,8 @@ const Index = () => {
           />
           <StatsCard
             title="الخزينة"
-            value={`$${totalBalance.toLocaleString()}`}
+            value={`$${netBalance.toLocaleString()}`}
+            changeType={netBalance >= 0 ? "positive" : "negative"}
             icon={Landmark}
             iconColor="bg-primary/10 text-primary"
           />

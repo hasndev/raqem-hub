@@ -263,14 +263,31 @@ const Treasury = () => {
 
   // Treasury Account handlers
   const handleAddAccount = async () => {
-    await addTreasuryAccount({
+    const balance = Number(accountFormData.balance) || 0;
+    
+    // Create the account first
+    const account = await addTreasuryAccount({
       name: accountFormData.name,
       name_en: accountFormData.name_en || null,
       percentage: Number(accountFormData.percentage) || 0,
-      balance: Number(accountFormData.balance) || 0,
+      balance: balance,
       description: accountFormData.description || null,
       color: accountFormData.color,
     });
+
+    // If balance > 0, create a withdrawal transaction (deduct from available funds)
+    if (account && balance > 0) {
+      await addTransaction({
+        type: "withdrawal",
+        category: "تحويل للخزينة",
+        amount: balance,
+        description: `توزيع رصيد لحساب: ${accountFormData.name}`,
+        date: new Date().toISOString().split("T")[0],
+        project_id: null,
+        status: "completed",
+      });
+    }
+
     setIsAddAccountOpen(false);
     resetAccountForm();
     toast({ title: "تمت إضافة الحساب بنجاح" });
@@ -278,14 +295,44 @@ const Treasury = () => {
 
   const handleEditAccount = async () => {
     if (!selectedAccount) return;
+    
+    const oldBalance = Number(selectedAccount.balance) || 0;
+    const newBalance = Number(accountFormData.balance) || 0;
+    const balanceDiff = newBalance - oldBalance;
+    
     await updateTreasuryAccount(selectedAccount.id, {
       name: accountFormData.name,
       name_en: accountFormData.name_en || null,
       percentage: Number(accountFormData.percentage) || 0,
-      balance: Number(accountFormData.balance) || 0,
+      balance: newBalance,
       description: accountFormData.description || null,
       color: accountFormData.color,
     });
+
+    // If balance increased, create a withdrawal transaction (deduct from available funds)
+    if (balanceDiff > 0) {
+      await addTransaction({
+        type: "withdrawal",
+        category: "تحويل للخزينة",
+        amount: balanceDiff,
+        description: `زيادة رصيد حساب: ${accountFormData.name}`,
+        date: new Date().toISOString().split("T")[0],
+        project_id: null,
+        status: "completed",
+      });
+    } else if (balanceDiff < 0) {
+      // If balance decreased, create a deposit transaction (return to available funds)
+      await addTransaction({
+        type: "deposit",
+        category: "تحويل من الخزينة",
+        amount: Math.abs(balanceDiff),
+        description: `سحب من حساب: ${accountFormData.name}`,
+        date: new Date().toISOString().split("T")[0],
+        project_id: null,
+        status: "completed",
+      });
+    }
+
     setIsEditAccountOpen(false);
     setSelectedAccount(null);
     resetAccountForm();
