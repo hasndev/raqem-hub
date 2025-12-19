@@ -140,6 +140,34 @@ export interface SalaryPayment {
   paid_by: string | null;
 }
 
+export interface Debt {
+  id: string;
+  type: "receivable" | "payable";
+  entity_type: "client" | "employee" | "supplier" | "other";
+  entity_id: string | null;
+  entity_name: string;
+  amount: number;
+  paid_amount: number;
+  description: string | null;
+  due_date: string | null;
+  status: "pending" | "partial" | "paid" | "cancelled";
+  project_id: string | null;
+  project?: Project | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface DebtPayment {
+  id: string;
+  debt_id: string;
+  amount: number;
+  payment_date: string;
+  notes: string | null;
+  transaction_id: string | null;
+  paid_by: string | null;
+  created_at: string;
+}
+
 export function useStore() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -151,6 +179,7 @@ export function useStore() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [treasuryAccounts, setTreasuryAccounts] = useState<TreasuryAccount[]>([]);
   const [salaryPayments, setSalaryPayments] = useState<SalaryPayment[]>([]);
+  const [debts, setDebts] = useState<Debt[]>([]);
 
   // Fetch all data
   const fetchData = useCallback(async () => {
@@ -163,7 +192,8 @@ export function useStore() {
         { data: projs },
         { data: trans },
         { data: treasury },
-        { data: payments }
+        { data: payments },
+        { data: debtsData }
       ] = await Promise.all([
         supabase.from("departments").select("*").order("name"),
         supabase.from("clients").select("*").order("name"),
@@ -171,7 +201,8 @@ export function useStore() {
         supabase.from("projects").select("*, client:clients(*), department:departments(*)").order("created_at", { ascending: false }),
         supabase.from("transactions").select("*, project:projects(*)").order("date", { ascending: false }),
         supabase.from("treasury_accounts").select("*").order("name"),
-        supabase.from("salary_payments").select("*")
+        supabase.from("salary_payments").select("*"),
+        supabase.from("debts").select("*, project:projects(*)").order("created_at", { ascending: false })
       ]);
 
       setDepartments((depts || []) as Department[]);
@@ -181,6 +212,7 @@ export function useStore() {
       setTransactions((trans || []) as Transaction[]);
       setTreasuryAccounts((treasury || []) as TreasuryAccount[]);
       setSalaryPayments((payments || []) as SalaryPayment[]);
+      setDebts((debtsData || []) as Debt[]);
     } catch (error: any) {
       console.error("Error fetching data:", error);
     } finally {
@@ -466,6 +498,99 @@ export function useStore() {
     return salaryPayments.some(p => p.employee_id === employeeId && p.month === month);
   };
 
+  // Debts CRUD
+  const addDebt = async (debt: Omit<Debt, "id" | "created_at" | "created_by" | "project">) => {
+    const { data: userData } = await supabase.auth.getUser();
+    
+    const { data, error } = await supabase
+      .from("debts")
+      .insert({ ...debt, created_by: userData.user?.id })
+      .select("*, project:projects(*)")
+      .single();
+    
+    if (error) {
+      toast({ title: "خطأ في إضافة الدين", description: error.message, variant: "destructive" });
+      return null;
+    }
+    setDebts(prev => [data as Debt, ...prev]);
+    return data as Debt;
+  };
+
+  const updateDebt = async (id: string, updates: Partial<Debt>) => {
+    const { project, ...dbUpdates } = updates;
+    const { error } = await supabase.from("debts").update(dbUpdates).eq("id", id);
+    
+    if (error) {
+      toast({ title: "خطأ في تحديث الدين", description: error.message, variant: "destructive" });
+      return;
+    }
+    
+    const { data } = await supabase
+      .from("debts")
+      .select("*, project:projects(*)")
+      .eq("id", id)
+      .single();
+    
+    if (data) {
+      setDebts(prev => prev.map(d => d.id === id ? (data as Debt) : d));
+    }
+  };
+
+  const deleteDebt = async (id: string) => {
+    const { error } = await supabase.from("debts").delete().eq("id", id);
+    
+    if (error) {
+      toast({ title: "خطأ في حذف الدين", description: error.message, variant: "destructive" });
+      return;
+    }
+    setDebts(prev => prev.filter(d => d.id !== id));
+  };
+
+  const addDebtPayment = async (debtId: string, amount: number, notes?: string) => {
+    const { data: userData } = await supabase.auth.getUser();
+    
+    // Create transaction for the payment
+    const debt = debts.find(d => d.id === debtId);
+    if (!debt) return null;
+
+    const transactionType = debt.type === "receivable" ? "income" : "expense";
+    const transaction = await addTransaction({
+      type: transactionType,
+      category: debt.type === "receivable" ? "إيرادات أخرى" : "مصاريف أخرى",
+      amount: amount,
+      description: `دفعة دين: ${debt.entity_name} - ${notes || ""}`,
+      date: new Date().toISOString().split("T")[0],
+      project_id: debt.project_id,
+      status: "completed",
+    });
+
+    // Create debt payment record
+    const { data, error } = await supabase
+      .from("debt_payments")
+      .insert({
+        debt_id: debtId,
+        amount: amount,
+        notes: notes,
+        transaction_id: transaction?.id,
+        paid_by: userData.user?.id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast({ title: "خطأ في تسجيل الدفعة", description: error.message, variant: "destructive" });
+      return null;
+    }
+
+    // Update debt paid_amount and status
+    const newPaidAmount = Number(debt.paid_amount) + amount;
+    const newStatus = newPaidAmount >= Number(debt.amount) ? "paid" : "partial";
+    
+    await updateDebt(debtId, { paid_amount: newPaidAmount, status: newStatus });
+    
+    return data;
+  };
+
   // Statistics
   const getStats = () => {
     const totalRevenue = transactions
@@ -476,8 +601,14 @@ export function useStore() {
       .reduce((sum, t) => sum + Number(t.amount), 0);
     const totalBalance = treasuryAccounts.reduce((sum, a) => sum + Number(a.balance), 0);
     const activeProjects = projects.filter(p => p.status === "in_progress").length;
+    const totalReceivables = debts
+      .filter(d => d.type === "receivable" && d.status !== "paid" && d.status !== "cancelled")
+      .reduce((sum, d) => sum + (Number(d.amount) - Number(d.paid_amount)), 0);
+    const totalPayables = debts
+      .filter(d => d.type === "payable" && d.status !== "paid" && d.status !== "cancelled")
+      .reduce((sum, d) => sum + (Number(d.amount) - Number(d.paid_amount)), 0);
     
-    return { totalRevenue, totalExpenses, totalBalance, activeProjects };
+    return { totalRevenue, totalExpenses, totalBalance, activeProjects, totalReceivables, totalPayables };
   };
 
   return {
@@ -491,6 +622,7 @@ export function useStore() {
     transactions, addTransaction, updateTransaction, deleteTransaction,
     treasuryAccounts, addTreasuryAccount, updateTreasuryAccount, deleteTreasuryAccount, setTreasuryAccounts,
     salaryPayments, addSalaryPayment, isEmployeePaidForMonth,
+    debts, addDebt, updateDebt, deleteDebt, addDebtPayment,
     
     getStats,
   };

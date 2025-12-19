@@ -14,6 +14,11 @@ import {
   CreditCard,
   CheckCircle2,
   Clock,
+  Briefcase,
+  UserCheck,
+  Receipt,
+  HandCoins,
+  DollarSign,
 } from "lucide-react";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -32,7 +37,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { TreasuryAccount } from "@/hooks/useStore";
+import { TreasuryAccount, Debt } from "@/hooks/useStore";
 
 const categories = {
   income: ["إيرادات مشاريع", "إيرادات استشارات", "إيرادات تدريب", "إيرادات أخرى"],
@@ -41,13 +46,26 @@ const categories = {
   deposit: ["إيداع نقدي", "تحويل وارد"],
 };
 
+const debtTypes = {
+  receivable: { label: "دين لنا", color: "text-success" },
+  payable: { label: "دين علينا", color: "text-destructive" },
+};
+
+const entityTypes = {
+  client: "عميل",
+  employee: "موظف",
+  supplier: "مورد",
+  other: "أخرى",
+};
+
 const Treasury = () => {
   const { 
     transactions, 
     treasuryAccounts, 
     projects, 
     employees, 
-    departments, 
+    departments,
+    clients,
     addTransaction, 
     updateTransaction, 
     deleteTransaction,
@@ -57,6 +75,12 @@ const Treasury = () => {
     salaryPayments,
     addSalaryPayment,
     isEmployeePaidForMonth,
+    debts,
+    addDebt,
+    updateDebt,
+    deleteDebt,
+    addDebtPayment,
+    getStats,
   } = useAppStore();
   const { toast } = useToast();
 
@@ -85,6 +109,25 @@ const Treasury = () => {
     color: "#3B82F6",
   });
 
+  // Debt state
+  const [isAddDebtOpen, setIsAddDebtOpen] = useState(false);
+  const [isEditDebtOpen, setIsEditDebtOpen] = useState(false);
+  const [isDeleteDebtOpen, setIsDeleteDebtOpen] = useState(false);
+  const [isPayDebtOpen, setIsPayDebtOpen] = useState(false);
+  const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
+  const [debtPayAmount, setDebtPayAmount] = useState("");
+  const [debtPayNotes, setDebtPayNotes] = useState("");
+  const [debtFormData, setDebtFormData] = useState({
+    type: "receivable" as Debt["type"],
+    entity_type: "client" as Debt["entity_type"],
+    entity_id: "",
+    entity_name: "",
+    amount: "",
+    description: "",
+    due_date: "",
+    project_id: "",
+  });
+
   const [formData, setFormData] = useState({
     type: "income" as Transaction["type"],
     category: "",
@@ -95,16 +138,20 @@ const Treasury = () => {
     status: "completed" as Transaction["status"],
   });
 
+  // Get stats
+  const stats = getStats();
+
   const filteredTx = transactions.filter(t => 
     (filterType === "all" || t.type === filterType) &&
     ((t.description || "").includes(search) || t.category.includes(search))
   );
 
-  const totalIncome = transactions.filter(t => t.type === "income" && t.status === "completed").reduce((s, t) => s + Number(t.amount), 0);
-  const totalExpense = transactions.filter(t => t.type === "expense" && t.status === "completed").reduce((s, t) => s + Number(t.amount), 0);
+  const totalIncome = stats.totalRevenue;
+  const totalExpense = stats.totalExpenses;
   const netProfit = totalIncome - totalExpense;
   const totalSalaries = employees.reduce((s, e) => s + Number(e.salary), 0);
   const activeEmployees = employees.filter(e => e.status === "active");
+  const totalTreasuryBalance = stats.totalBalance;
 
   const resetForm = () => {
     setFormData({ type: "income", category: "", amount: "", description: "", date: new Date().toISOString().split("T")[0], project_id: "", status: "completed" });
@@ -112,6 +159,10 @@ const Treasury = () => {
 
   const resetAccountForm = () => {
     setAccountFormData({ name: "", name_en: "", percentage: "", balance: "", description: "", color: "#3B82F6" });
+  };
+
+  const resetDebtForm = () => {
+    setDebtFormData({ type: "receivable", entity_type: "client", entity_id: "", entity_name: "", amount: "", description: "", due_date: "", project_id: "" });
   };
 
   const handleAdd = async () => {
@@ -157,7 +208,6 @@ const Treasury = () => {
   const handlePaySalary = async () => {
     if (!selectedEmpForPay) return;
     
-    // Create transaction first
     const transaction = await addTransaction({
       type: "expense",
       category: "رواتب",
@@ -168,7 +218,6 @@ const Treasury = () => {
       status: "completed",
     });
 
-    // Record salary payment
     if (transaction) {
       await addSalaryPayment({
         employee_id: selectedEmpForPay.id,
@@ -253,6 +302,61 @@ const Treasury = () => {
     toast({ title: "تم حذف الحساب", variant: "destructive" });
   };
 
+  // Debt handlers
+  const handleAddDebt = async () => {
+    await addDebt({
+      type: debtFormData.type,
+      entity_type: debtFormData.entity_type,
+      entity_id: debtFormData.entity_id || null,
+      entity_name: debtFormData.entity_name,
+      amount: Number(debtFormData.amount),
+      paid_amount: 0,
+      description: debtFormData.description || null,
+      due_date: debtFormData.due_date || null,
+      status: "pending",
+      project_id: debtFormData.project_id || null,
+    });
+    setIsAddDebtOpen(false);
+    resetDebtForm();
+    toast({ title: "تمت إضافة الدين بنجاح" });
+  };
+
+  const handleEditDebt = async () => {
+    if (!selectedDebt) return;
+    await updateDebt(selectedDebt.id, {
+      type: debtFormData.type,
+      entity_type: debtFormData.entity_type,
+      entity_id: debtFormData.entity_id || null,
+      entity_name: debtFormData.entity_name,
+      amount: Number(debtFormData.amount),
+      description: debtFormData.description || null,
+      due_date: debtFormData.due_date || null,
+      project_id: debtFormData.project_id || null,
+    });
+    setIsEditDebtOpen(false);
+    setSelectedDebt(null);
+    resetDebtForm();
+    toast({ title: "تم تحديث الدين" });
+  };
+
+  const handleDeleteDebt = async () => {
+    if (!selectedDebt) return;
+    await deleteDebt(selectedDebt.id);
+    setIsDeleteDebtOpen(false);
+    setSelectedDebt(null);
+    toast({ title: "تم حذف الدين", variant: "destructive" });
+  };
+
+  const handlePayDebt = async () => {
+    if (!selectedDebt) return;
+    await addDebtPayment(selectedDebt.id, Number(debtPayAmount), debtPayNotes);
+    setIsPayDebtOpen(false);
+    setSelectedDebt(null);
+    setDebtPayAmount("");
+    setDebtPayNotes("");
+    toast({ title: "تم تسجيل الدفعة بنجاح" });
+  };
+
   const openEditAccount = (account: TreasuryAccount) => {
     setSelectedAccount(account);
     setAccountFormData({
@@ -264,6 +368,27 @@ const Treasury = () => {
       color: account.color,
     });
     setIsEditAccountOpen(true);
+  };
+
+  const openEditDebt = (debt: Debt) => {
+    setSelectedDebt(debt);
+    setDebtFormData({
+      type: debt.type,
+      entity_type: debt.entity_type,
+      entity_id: debt.entity_id || "",
+      entity_name: debt.entity_name,
+      amount: String(debt.amount),
+      description: debt.description || "",
+      due_date: debt.due_date || "",
+      project_id: debt.project_id || "",
+    });
+    setIsEditDebtOpen(true);
+  };
+
+  const openPayDebt = (debt: Debt) => {
+    setSelectedDebt(debt);
+    setDebtPayAmount(String(Number(debt.amount) - Number(debt.paid_amount)));
+    setIsPayDebtOpen(true);
   };
 
   const openEdit = (tx: Transaction) => {
@@ -284,6 +409,11 @@ const Treasury = () => {
 
   const paidCount = activeEmployees.filter(e => isEmployeePaidForMonth(e.id, salaryMonth)).length;
   const unpaidCount = activeEmployees.length - paidCount;
+
+  // Filter debts
+  const activeDebts = debts.filter(d => d.status !== "paid" && d.status !== "cancelled");
+  const receivables = activeDebts.filter(d => d.type === "receivable");
+  const payables = activeDebts.filter(d => d.type === "payable");
 
   const renderTxForm = (onSubmit: () => void, submitText: string) => (
     <div className="space-y-4">
@@ -441,13 +571,133 @@ const Treasury = () => {
     </div>
   );
 
+  const renderDebtForm = (onSubmit: () => void, submitText: string) => (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-2">نوع الدين</label>
+          <select
+            value={debtFormData.type}
+            onChange={(e) => setDebtFormData({ ...debtFormData, type: e.target.value as Debt["type"] })}
+            className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="receivable">دين لنا (مستحق)</option>
+            <option value="payable">دين علينا (مطلوب)</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-2">نوع الجهة</label>
+          <select
+            value={debtFormData.entity_type}
+            onChange={(e) => setDebtFormData({ ...debtFormData, entity_type: e.target.value as Debt["entity_type"], entity_id: "" })}
+            className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="client">عميل</option>
+            <option value="employee">موظف</option>
+            <option value="supplier">مورد</option>
+            <option value="other">أخرى</option>
+          </select>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        {debtFormData.entity_type === "client" && (
+          <div>
+            <label className="block text-sm font-medium mb-2">اختر العميل</label>
+            <select
+              value={debtFormData.entity_id}
+              onChange={(e) => {
+                const client = clients.find(c => c.id === e.target.value);
+                setDebtFormData({ ...debtFormData, entity_id: e.target.value, entity_name: client?.name || "" });
+              }}
+              className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="">اختر عميل</option>
+              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+        )}
+        {debtFormData.entity_type === "employee" && (
+          <div>
+            <label className="block text-sm font-medium mb-2">اختر الموظف</label>
+            <select
+              value={debtFormData.entity_id}
+              onChange={(e) => {
+                const emp = employees.find(emp => emp.id === e.target.value);
+                setDebtFormData({ ...debtFormData, entity_id: e.target.value, entity_name: emp?.name || "" });
+              }}
+              className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="">اختر موظف</option>
+              {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+            </select>
+          </div>
+        )}
+        {(debtFormData.entity_type === "supplier" || debtFormData.entity_type === "other") && (
+          <div>
+            <label className="block text-sm font-medium mb-2">اسم الجهة</label>
+            <input
+              type="text"
+              value={debtFormData.entity_name}
+              onChange={(e) => setDebtFormData({ ...debtFormData, entity_name: e.target.value })}
+              className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              placeholder="أدخل اسم الجهة"
+            />
+          </div>
+        )}
+        <div>
+          <label className="block text-sm font-medium mb-2">المبلغ ($)</label>
+          <input
+            type="number"
+            value={debtFormData.amount}
+            onChange={(e) => setDebtFormData({ ...debtFormData, amount: e.target.value })}
+            className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-2">تاريخ الاستحقاق</label>
+          <input
+            type="date"
+            value={debtFormData.due_date}
+            onChange={(e) => setDebtFormData({ ...debtFormData, due_date: e.target.value })}
+            className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-2">المشروع (اختياري)</label>
+          <select
+            value={debtFormData.project_id}
+            onChange={(e) => setDebtFormData({ ...debtFormData, project_id: e.target.value })}
+            className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="">بدون مشروع</option>
+            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-2">الوصف</label>
+        <textarea
+          value={debtFormData.description}
+          onChange={(e) => setDebtFormData({ ...debtFormData, description: e.target.value })}
+          className="w-full h-20 px-4 py-2 bg-muted border border-border rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+      </div>
+      <div className="flex justify-end gap-3 pt-4">
+        <Button variant="outline" onClick={() => { setIsAddDebtOpen(false); setIsEditDebtOpen(false); resetDebtForm(); }}>إلغاء</Button>
+        <Button onClick={onSubmit}>{submitText}</Button>
+      </div>
+    </div>
+  );
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between animate-fade-in">
           <div>
             <h1 className="text-2xl font-bold text-foreground">الخزينة</h1>
-            <p className="text-muted-foreground">إدارة الشؤون المالية والرواتب</p>
+            <p className="text-muted-foreground">إدارة الشؤون المالية والرواتب والديون</p>
           </div>
           <Button className="gap-2" onClick={() => setIsAddOpen(true)}>
             <Plus className="w-4 h-4" />
@@ -455,51 +705,96 @@ const Treasury = () => {
           </Button>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 animate-slide-up">
-          <div className="bg-card rounded-xl shadow-card p-5">
+        {/* Main Statistics Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 animate-slide-up">
+          <div className="bg-card rounded-xl shadow-card p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground">المشاريع</p>
+                <p className="text-xl font-bold text-primary">{projects.length}</p>
+              </div>
+              <Briefcase className="w-5 h-5 text-primary" />
+            </div>
+          </div>
+          <div className="bg-card rounded-xl shadow-card p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground">العملاء</p>
+                <p className="text-xl font-bold text-primary">{clients.length}</p>
+              </div>
+              <UserCheck className="w-5 h-5 text-primary" />
+            </div>
+          </div>
+          <div className="bg-card rounded-xl shadow-card p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">الإيرادات</p>
-                <p className="text-xl font-bold text-success">{totalIncome.toLocaleString()}</p>
+                <p className="text-xl font-bold text-success">${totalIncome.toLocaleString()}</p>
               </div>
               <TrendingUp className="w-5 h-5 text-success" />
             </div>
           </div>
-          <div className="bg-card rounded-xl shadow-card p-5">
+          <div className="bg-card rounded-xl shadow-card p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">المصروفات</p>
-                <p className="text-xl font-bold text-destructive">{totalExpense.toLocaleString()}</p>
+                <p className="text-xl font-bold text-destructive">${totalExpense.toLocaleString()}</p>
               </div>
               <TrendingDown className="w-5 h-5 text-destructive" />
             </div>
           </div>
-          <div className="bg-card rounded-xl shadow-card p-5">
+          <div className="bg-card rounded-xl shadow-card p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">صافي الربح</p>
-                <p className={`text-xl font-bold ${netProfit >= 0 ? "text-success" : "text-destructive"}`}>{netProfit.toLocaleString()}</p>
+                <p className={`text-xl font-bold ${netProfit >= 0 ? "text-success" : "text-destructive"}`}>${netProfit.toLocaleString()}</p>
               </div>
               <Wallet className="w-5 h-5 text-primary" />
             </div>
           </div>
-          <div className="bg-card rounded-xl shadow-card p-5">
+          <div className="bg-card rounded-xl shadow-card p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-muted-foreground">إجمالي الرصيد</p>
-                <p className="text-xl font-bold text-primary">{treasuryAccounts.reduce((s, a) => s + Number(a.balance), 0).toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">رصيد الخزينة</p>
+                <p className="text-xl font-bold text-primary">${totalTreasuryBalance.toLocaleString()}</p>
               </div>
               <PiggyBank className="w-5 h-5 text-primary" />
             </div>
           </div>
-          <div className="bg-card rounded-xl shadow-card p-5">
+        </div>
+
+        {/* Debt Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-slide-up">
+          <div className="bg-card rounded-xl shadow-card p-4 border-r-4 border-success">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-muted-foreground">مجموع الرواتب</p>
-                <p className="text-xl font-bold text-warning">{totalSalaries.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground">ديون لنا (مستحقات)</p>
+                <p className="text-2xl font-bold text-success">${stats.totalReceivables.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground mt-1">{receivables.length} دين نشط</p>
               </div>
-              <Users className="w-5 h-5 text-warning" />
+              <Receipt className="w-6 h-6 text-success" />
+            </div>
+          </div>
+          <div className="bg-card rounded-xl shadow-card p-4 border-r-4 border-destructive">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">ديون علينا (مطلوبات)</p>
+                <p className="text-2xl font-bold text-destructive">${stats.totalPayables.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground mt-1">{payables.length} دين نشط</p>
+              </div>
+              <HandCoins className="w-6 h-6 text-destructive" />
+            </div>
+          </div>
+          <div className="bg-card rounded-xl shadow-card p-4 border-r-4 border-primary">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">صافي الديون</p>
+                <p className={`text-2xl font-bold ${stats.totalReceivables - stats.totalPayables >= 0 ? "text-success" : "text-destructive"}`}>
+                  ${(stats.totalReceivables - stats.totalPayables).toLocaleString()}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">{stats.totalReceivables - stats.totalPayables >= 0 ? "لصالحنا" : "علينا"}</p>
+              </div>
+              <DollarSign className="w-6 h-6 text-primary" />
             </div>
           </div>
         </div>
@@ -508,6 +803,7 @@ const Treasury = () => {
         <Tabs defaultValue="transactions" className="animate-slide-up">
           <TabsList className="mb-4">
             <TabsTrigger value="transactions">المعاملات المالية</TabsTrigger>
+            <TabsTrigger value="debts">إدارة الديون</TabsTrigger>
             <TabsTrigger value="salaries">إدارة الرواتب</TabsTrigger>
             <TabsTrigger value="accounts">حسابات الخزينة</TabsTrigger>
           </TabsList>
@@ -566,7 +862,7 @@ const Treasury = () => {
                       <td className="px-4 py-3 text-sm">{tx.category}</td>
                       <td className="px-4 py-3 text-sm max-w-[200px] truncate">{tx.description}</td>
                       <td className={`px-4 py-3 text-sm font-bold ${tx.type === "income" || tx.type === "deposit" ? "text-success" : "text-destructive"}`}>
-                        {tx.type === "income" || tx.type === "deposit" ? "+" : "-"}{Number(tx.amount).toLocaleString()}
+                        {tx.type === "income" || tx.type === "deposit" ? "+" : "-"}${Number(tx.amount).toLocaleString()}
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant={tx.status === "completed" ? "default" : "secondary"} className="text-xs">
@@ -585,6 +881,80 @@ const Treasury = () => {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          </TabsContent>
+
+          {/* Debts Tab */}
+          <TabsContent value="debts" className="space-y-4">
+            <div className="flex justify-end">
+              <Button className="gap-2" onClick={() => setIsAddDebtOpen(true)}>
+                <Plus className="w-4 h-4" />
+                إضافة دين جديد
+              </Button>
+            </div>
+
+            <div className="bg-card rounded-xl shadow-card overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">النوع</th>
+                    <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">الجهة</th>
+                    <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">المبلغ الكلي</th>
+                    <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">المدفوع</th>
+                    <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">المتبقي</th>
+                    <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">تاريخ الاستحقاق</th>
+                    <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">الحالة</th>
+                    <th className="text-right px-4 py-3 text-sm font-semibold text-muted-foreground">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {debts.map((debt, index) => {
+                    const remaining = Number(debt.amount) - Number(debt.paid_amount);
+                    return (
+                      <tr key={debt.id} className="hover:bg-muted/30 transition-colors animate-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
+                        <td className="px-4 py-3">
+                          <Badge variant={debt.type === "receivable" ? "default" : "destructive"} className="text-xs">
+                            {debtTypes[debt.type].label}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div>
+                            <p className="text-sm font-medium">{debt.entity_name}</p>
+                            <p className="text-xs text-muted-foreground">{entityTypes[debt.entity_type]}</p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm font-bold">${Number(debt.amount).toLocaleString()}</td>
+                        <td className="px-4 py-3 text-sm text-success">${Number(debt.paid_amount).toLocaleString()}</td>
+                        <td className="px-4 py-3 text-sm font-bold text-warning">${remaining.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-sm">{debt.due_date || "-"}</td>
+                        <td className="px-4 py-3">
+                          <Badge 
+                            variant={debt.status === "paid" ? "default" : debt.status === "partial" ? "secondary" : "outline"}
+                            className="text-xs"
+                          >
+                            {debt.status === "paid" ? "مدفوع" : debt.status === "partial" ? "جزئي" : "معلق"}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            {debt.status !== "paid" && (
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openPayDebt(debt)}>
+                                <CreditCard className="w-3.5 h-3.5 text-success" />
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDebt(debt)}>
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setSelectedDebt(debt); setIsDeleteDebtOpen(true); }}>
+                              <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -614,11 +984,10 @@ const Treasury = () => {
               </div>
               <Button onClick={() => setIsPayAllOpen(true)} disabled={unpaidCount === 0} className="gap-2">
                 <CreditCard className="w-4 h-4" />
-                صرف جميع الرواتب (${activeEmployees.reduce((s, e) => !isEmployeePaidForMonth(e.id, salaryMonth) ? s + Number(e.salary) : s, 0).toLocaleString()}$)
+                صرف جميع الرواتب (${activeEmployees.reduce((s, e) => !isEmployeePaidForMonth(e.id, salaryMonth) ? s + Number(e.salary) : s, 0).toLocaleString()})
               </Button>
             </div>
 
-            {/* Summary Cards for Salaries */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="bg-card rounded-xl shadow-card p-5">
                 <p className="text-sm text-muted-foreground">إجمالي الرواتب الشهرية</p>
@@ -642,7 +1011,6 @@ const Treasury = () => {
               </div>
             </div>
 
-            {/* Employees Salary Table */}
             <div className="bg-card rounded-xl shadow-card overflow-hidden">
               <table className="w-full">
                 <thead className="bg-muted/50">
@@ -765,7 +1133,7 @@ const Treasury = () => {
         </Tabs>
       </div>
 
-      {/* Modals */}
+      {/* Transaction Modals */}
       <Modal isOpen={isAddOpen} onClose={() => { setIsAddOpen(false); resetForm(); }} title="إضافة معاملة جديدة">
         {renderTxForm(handleAdd, "إضافة المعاملة")}
       </Modal>
@@ -781,6 +1149,60 @@ const Treasury = () => {
 
       <Modal isOpen={isEditAccountOpen} onClose={() => { setIsEditAccountOpen(false); setSelectedAccount(null); resetAccountForm(); }} title="تعديل الحساب">
         {renderAccountForm(handleEditAccount, "حفظ التغييرات")}
+      </Modal>
+
+      {/* Debt Modals */}
+      <Modal isOpen={isAddDebtOpen} onClose={() => { setIsAddDebtOpen(false); resetDebtForm(); }} title="إضافة دين جديد">
+        {renderDebtForm(handleAddDebt, "إضافة الدين")}
+      </Modal>
+
+      <Modal isOpen={isEditDebtOpen} onClose={() => { setIsEditDebtOpen(false); setSelectedDebt(null); resetDebtForm(); }} title="تعديل الدين">
+        {renderDebtForm(handleEditDebt, "حفظ التغييرات")}
+      </Modal>
+
+      <Modal isOpen={isPayDebtOpen} onClose={() => { setIsPayDebtOpen(false); setSelectedDebt(null); setDebtPayAmount(""); setDebtPayNotes(""); }} title="تسجيل دفعة" size="sm">
+        {selectedDebt && (
+          <div className="space-y-4">
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="font-bold">{selectedDebt.entity_name}</p>
+              <p className="text-sm text-muted-foreground">{debtTypes[selectedDebt.type].label}</p>
+              <div className="flex justify-between mt-2 text-sm">
+                <span>المبلغ الكلي:</span>
+                <span className="font-bold">${Number(selectedDebt.amount).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>المدفوع:</span>
+                <span className="text-success">${Number(selectedDebt.paid_amount).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>المتبقي:</span>
+                <span className="text-warning font-bold">${(Number(selectedDebt.amount) - Number(selectedDebt.paid_amount)).toLocaleString()}</span>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">مبلغ الدفعة ($)</label>
+              <input
+                type="number"
+                value={debtPayAmount}
+                onChange={(e) => setDebtPayAmount(e.target.value)}
+                max={Number(selectedDebt.amount) - Number(selectedDebt.paid_amount)}
+                className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">ملاحظات</label>
+              <textarea
+                value={debtPayNotes}
+                onChange={(e) => setDebtPayNotes(e.target.value)}
+                className="w-full h-20 px-4 py-2 bg-muted border border-border rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => { setIsPayDebtOpen(false); setSelectedDebt(null); }}>إلغاء</Button>
+              <Button onClick={handlePayDebt}>تسجيل الدفعة</Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       <Modal isOpen={isPaySalaryOpen} onClose={() => { setIsPaySalaryOpen(false); setSelectedEmpForPay(null); }} title="تأكيد صرف الراتب" size="sm">
@@ -833,6 +1255,16 @@ const Treasury = () => {
         onConfirm={handleDeleteAccount}
         title="حذف الحساب"
         description={`هل أنت متأكد من حذف حساب "${selectedAccount?.name}"؟`}
+        confirmText="حذف"
+        variant="destructive"
+      />
+
+      <ConfirmDialog
+        isOpen={isDeleteDebtOpen}
+        onClose={() => { setIsDeleteDebtOpen(false); setSelectedDebt(null); }}
+        onConfirm={handleDeleteDebt}
+        title="حذف الدين"
+        description={`هل أنت متأكد من حذف دين "${selectedDebt?.entity_name}"؟`}
         confirmText="حذف"
         variant="destructive"
       />
