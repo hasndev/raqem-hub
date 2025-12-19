@@ -42,7 +42,7 @@ const categories = {
 };
 
 const Treasury = () => {
-  const { transactions, treasuryAccounts, projects, employees, addTransaction, updateTransaction, deleteTransaction, updateEmployee } = useAppStore();
+  const { transactions, treasuryAccounts, projects, employees, departments, addTransaction, updateTransaction, deleteTransaction, updateEmployee } = useAppStore();
   const { toast } = useToast();
 
   const [search, setSearch] = useState("");
@@ -61,7 +61,7 @@ const Treasury = () => {
     amount: "",
     description: "",
     date: new Date().toISOString().split("T")[0],
-    projectId: "",
+    project_id: "",
     status: "completed" as Transaction["status"],
   });
 
@@ -84,19 +84,17 @@ const Treasury = () => {
   const activeEmployees = employees.filter(e => e.status === "active");
 
   const resetForm = () => {
-    setFormData({ type: "income", category: "", amount: "", description: "", date: new Date().toISOString().split("T")[0], projectId: "", status: "completed" });
+    setFormData({ type: "income", category: "", amount: "", description: "", date: new Date().toISOString().split("T")[0], project_id: "", status: "completed" });
   };
 
   const handleAdd = () => {
-    const project = projects.find(p => p.id === formData.projectId);
     addTransaction({
       type: formData.type,
       category: formData.category,
       amount: Number(formData.amount),
       description: formData.description,
       date: formData.date,
-      projectId: formData.projectId || undefined,
-      projectName: project?.name,
+      project_id: formData.project_id || null,
       status: formData.status,
     });
     setIsAddOpen(false);
@@ -106,11 +104,14 @@ const Treasury = () => {
 
   const handleEdit = () => {
     if (!selectedTx) return;
-    const project = projects.find(p => p.id === formData.projectId);
     updateTransaction(selectedTx.id, {
-      ...formData,
+      type: formData.type,
+      category: formData.category,
       amount: Number(formData.amount),
-      projectName: project?.name,
+      description: formData.description,
+      date: formData.date,
+      project_id: formData.project_id || null,
+      status: formData.status,
     });
     setIsEditOpen(false);
     setSelectedTx(null);
@@ -135,6 +136,7 @@ const Treasury = () => {
       amount: selectedEmpForPay.salary,
       description: `راتب ${selectedEmpForPay.name} - ${salaryMonth}`,
       date: new Date().toISOString().split("T")[0],
+      project_id: null,
       status: "completed",
     });
 
@@ -158,6 +160,7 @@ const Treasury = () => {
         amount: emp.salary,
         description: `راتب ${emp.name} - ${salaryMonth}`,
         date: new Date().toISOString().split("T")[0],
+        project_id: null,
         status: "completed",
       });
     });
@@ -180,9 +183,9 @@ const Treasury = () => {
       type: tx.type,
       category: tx.category,
       amount: String(tx.amount),
-      description: tx.description,
-      date: tx.date,
-      projectId: tx.projectId || "",
+      description: tx.description || "",
+      date: tx.date || new Date().toISOString().split("T")[0],
+      project_id: tx.project_id || "",
       status: tx.status,
     });
     setIsEditOpen(true);
@@ -256,8 +259,8 @@ const Treasury = () => {
         <div>
           <label className="block text-sm font-medium mb-2">المشروع (اختياري)</label>
           <select
-            value={formData.projectId}
-            onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
+            value={formData.project_id}
+            onChange={(e) => setFormData({ ...formData, project_id: e.target.value })}
             className="w-full h-10 px-4 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
             <option value="">بدون مشروع</option>
@@ -510,7 +513,7 @@ const Treasury = () => {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm">{emp.department}</td>
+                        <td className="px-4 py-3 text-sm">{departments.find(d => d.id === emp.department_id)?.name || "-"}</td>
                         <td className="px-4 py-3 text-sm">{emp.position}</td>
                         <td className="px-4 py-3 text-sm font-bold">${emp.salary.toLocaleString()}</td>
                         <td className="px-4 py-3">
