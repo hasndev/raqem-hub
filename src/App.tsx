@@ -33,18 +33,91 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<Auth />} />
-              <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-              <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
-              <Route path="/clients" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
-              <Route path="/departments" element={<ProtectedRoute><Departments /></ProtectedRoute>} />
-              <Route path="/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />
-              <Route path="/treasury" element={<ProtectedRoute><Treasury /></ProtectedRoute>} />
-              <Route path="/salaries" element={<ProtectedRoute><Salaries /></ProtectedRoute>} />
-              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-              <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
-              <Route path="/users" element={<ProtectedRoute requiredRole="admin"><Users /></ProtectedRoute>} />
-              <Route path="/notes" element={<ProtectedRoute><Notes /></ProtectedRoute>} />
-              <Route path="/credentials" element={<ProtectedRoute requiredRole="admin"><CredentialsVault /></ProtectedRoute>} />
+              
+              {/* Dashboard - Admin, Supervisor, Accountant */}
+              <Route path="/" element={
+                <ProtectedRoute allowedRoles={["admin", "supervisor", "accountant"]}>
+                  <Index />
+                </ProtectedRoute>
+              } />
+              
+              {/* Projects - Admin, Supervisor, Employee */}
+              <Route path="/projects" element={
+                <ProtectedRoute allowedRoles={["admin", "supervisor", "employee"]}>
+                  <Projects />
+                </ProtectedRoute>
+              } />
+              
+              {/* Clients - Admin, Supervisor */}
+              <Route path="/clients" element={
+                <ProtectedRoute allowedRoles={["admin", "supervisor"]}>
+                  <Clients />
+                </ProtectedRoute>
+              } />
+              
+              {/* Departments - Admin, Supervisor */}
+              <Route path="/departments" element={
+                <ProtectedRoute allowedRoles={["admin", "supervisor"]}>
+                  <Departments />
+                </ProtectedRoute>
+              } />
+              
+              {/* Employees - Admin only */}
+              <Route path="/employees" element={
+                <ProtectedRoute requiredRole="admin">
+                  <Employees />
+                </ProtectedRoute>
+              } />
+              
+              {/* Treasury - Admin, Accountant */}
+              <Route path="/treasury" element={
+                <ProtectedRoute allowedRoles={["admin", "accountant"]}>
+                  <Treasury />
+                </ProtectedRoute>
+              } />
+              
+              {/* Salaries - Admin, Accountant, Employee (for their own) */}
+              <Route path="/salaries" element={
+                <ProtectedRoute allowedRoles={["admin", "accountant", "employee"]}>
+                  <Salaries />
+                </ProtectedRoute>
+              } />
+              
+              {/* Notes - All authenticated users */}
+              <Route path="/notes" element={
+                <ProtectedRoute>
+                  <Notes />
+                </ProtectedRoute>
+              } />
+              
+              {/* Settings - All authenticated users */}
+              <Route path="/settings" element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              } />
+              
+              {/* Account - All authenticated users */}
+              <Route path="/account" element={
+                <ProtectedRoute>
+                  <Account />
+                </ProtectedRoute>
+              } />
+              
+              {/* Users Management - Admin only */}
+              <Route path="/users" element={
+                <ProtectedRoute requiredRole="admin">
+                  <Users />
+                </ProtectedRoute>
+              } />
+              
+              {/* Credentials Vault - Admin only */}
+              <Route path="/credentials" element={
+                <ProtectedRoute requiredRole="admin">
+                  <CredentialsVault />
+                </ProtectedRoute>
+              } />
+              
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
