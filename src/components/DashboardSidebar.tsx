@@ -17,24 +17,40 @@ import {
 } from "lucide-react";
 import raqeemLogo from "@/assets/raqeem-logo-white.png";
 import { useAuth } from "@/context/AuthContext";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-const menuItems = [
-  { icon: LayoutDashboard, label: "لوحة التحكم", path: "/" },
-  { icon: FolderKanban, label: "المشاريع", path: "/projects" },
-  { icon: Users, label: "العملاء", path: "/clients" },
-  { icon: Building2, label: "الأقسام", path: "/departments" },
-  { icon: UserCircle, label: "الموظفين", path: "/employees" },
-  { icon: Landmark, label: "الخزينة", path: "/treasury" },
-  { icon: Wallet, label: "الرواتب", path: "/salaries" },
-  { icon: StickyNote, label: "الملاحظات", path: "/notes" },
-  { icon: Settings, label: "الإعدادات", path: "/settings" },
+interface MenuItem {
+  icon: React.ElementType;
+  label: string;
+  path: string;
+  roles?: ("admin" | "supervisor" | "accountant" | "employee")[];
+}
+
+const menuItems: MenuItem[] = [
+  { icon: LayoutDashboard, label: "لوحة التحكم", path: "/", roles: ["admin", "supervisor", "accountant"] },
+  { icon: FolderKanban, label: "المشاريع", path: "/projects", roles: ["admin", "supervisor", "employee"] },
+  { icon: Users, label: "العملاء", path: "/clients", roles: ["admin", "supervisor"] },
+  { icon: Building2, label: "الأقسام", path: "/departments", roles: ["admin", "supervisor"] },
+  { icon: UserCircle, label: "الموظفين", path: "/employees", roles: ["admin"] },
+  { icon: Landmark, label: "الخزينة", path: "/treasury", roles: ["admin", "accountant"] },
+  { icon: Wallet, label: "الرواتب", path: "/salaries", roles: ["admin", "accountant", "employee"] },
+  { icon: StickyNote, label: "الملاحظات", path: "/notes" }, // All roles can access
+  { icon: Settings, label: "الإعدادات", path: "/settings" }, // All roles can access
 ];
 
 export function DashboardSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
-  const { isAdmin } = useAuth();
+  const { isAdmin, hasRole, roles } = useAuth();
+
+  // Filter menu items based on user roles
+  const visibleMenuItems = menuItems.filter((item) => {
+    // If no roles specified, show to all authenticated users
+    if (!item.roles) return true;
+    // Admin sees everything
+    if (isAdmin) return true;
+    // Check if user has any of the required roles
+    return item.roles.some((role) => hasRole(role));
+  });
 
   return (
     <aside
@@ -54,7 +70,7 @@ export function DashboardSidebar() {
       {/* Menu - Scrollable */}
       <nav className="flex-1 py-4 px-3 overflow-y-auto min-h-0">
         <ul className="space-y-2">
-          {menuItems.map((item) => {
+          {visibleMenuItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <li key={item.path}>
@@ -75,7 +91,7 @@ export function DashboardSidebar() {
             );
           })}
 
-          {/* Admin Only: Users Management */}
+          {/* Admin Only: Users Management & Credentials */}
           {isAdmin && (
             <>
               <li>

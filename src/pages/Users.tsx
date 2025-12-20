@@ -24,6 +24,7 @@ import {
   EyeOff,
   Pencil,
   KeyRound,
+  FolderKanban,
 } from "lucide-react";
 
 type AppRole = "admin" | "supervisor" | "accountant" | "employee";
@@ -48,14 +49,14 @@ const roleLabels: Record<AppRole, string> = {
   admin: "مدير النظام",
   supervisor: "مشرف",
   accountant: "محاسب",
-  employee: "موظف",
+  employee: "موظف مشاريع",
 };
 
 const roleIcons: Record<AppRole, React.ReactNode> = {
   admin: <ShieldCheck className="w-4 h-4" />,
   supervisor: <UserCog className="w-4 h-4" />,
   accountant: <Calculator className="w-4 h-4" />,
-  employee: <Users className="w-4 h-4" />,
+  employee: <FolderKanban className="w-4 h-4" />,
 };
 
 const UsersPage = () => {

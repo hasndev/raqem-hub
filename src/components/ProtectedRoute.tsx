@@ -1,13 +1,16 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 
+type AppRole = "admin" | "supervisor" | "accountant" | "employee";
+
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: "admin" | "supervisor" | "accountant" | "employee";
+  requiredRole?: AppRole;
+  allowedRoles?: AppRole[];
 }
 
-export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { user, loading, hasRole } = useAuth();
+export function ProtectedRoute({ children, requiredRole, allowedRoles }: ProtectedRouteProps) {
+  const { user, loading, hasRole, isAdmin } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -22,8 +25,22 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  if (requiredRole && !hasRole(requiredRole) && !hasRole("admin")) {
+  // Admin has access to everything
+  if (isAdmin) {
+    return <>{children}</>;
+  }
+
+  // Check for required single role
+  if (requiredRole && !hasRole(requiredRole)) {
     return <Navigate to="/" replace />;
+  }
+
+  // Check for allowed roles (user must have at least one)
+  if (allowedRoles && allowedRoles.length > 0) {
+    const hasAllowedRole = allowedRoles.some((role) => hasRole(role));
+    if (!hasAllowedRole) {
+      return <Navigate to="/" replace />;
+    }
   }
 
   return <>{children}</>;
