@@ -56,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (data) {
       setRoles(data.map((r) => r.role as AppRole));
     }
+    setRolesLoaded(true);
   };
 
   const refreshProfile = async () => {
