@@ -3,6 +3,13 @@ import { useAuth } from "@/context/AuthContext";
 
 type AppRole = "admin" | "supervisor" | "accountant" | "employee";
 
+function getFallbackRoute(hasRole: (role: AppRole) => boolean): string {
+  if (hasRole("supervisor")) return "/projects";
+  if (hasRole("accountant")) return "/treasury";
+  if (hasRole("employee")) return "/projects";
+  return "/notes"; // fallback for users with no specific role
+}
+
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRole?: AppRole;
@@ -32,14 +39,21 @@ export function ProtectedRoute({ children, requiredRole, allowedRoles }: Protect
 
   // Check for required single role
   if (requiredRole && !hasRole(requiredRole)) {
-    return <Navigate to="/" replace />;
+    // Find a safe fallback route based on user roles
+    const fallback = getFallbackRoute(hasRole);
+    if (fallback !== location.pathname) {
+      return <Navigate to={fallback} replace />;
+    }
   }
 
   // Check for allowed roles (user must have at least one)
   if (allowedRoles && allowedRoles.length > 0) {
     const hasAllowedRole = allowedRoles.some((role) => hasRole(role));
     if (!hasAllowedRole) {
-      return <Navigate to="/" replace />;
+      const fallback = getFallbackRoute(hasRole);
+      if (fallback !== location.pathname) {
+        return <Navigate to={fallback} replace />;
+      }
     }
   }
 
