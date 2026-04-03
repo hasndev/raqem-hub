@@ -141,6 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         roles,
         loading,
+        rolesLoaded,
         signIn,
         signUp,
         signOut,
