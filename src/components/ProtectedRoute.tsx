@@ -3,6 +3,13 @@ import { useAuth } from "@/context/AuthContext";
 
 type AppRole = "admin" | "supervisor" | "accountant" | "employee";
 
+function getFallbackRoute(hasRole: (role: AppRole) => boolean): string {
+  if (hasRole("supervisor")) return "/projects";
+  if (hasRole("accountant")) return "/treasury";
+  if (hasRole("employee")) return "/projects";
+  return "/notes"; // fallback for users with no specific role
+}
+
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRole?: AppRole;
