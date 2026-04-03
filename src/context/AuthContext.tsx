@@ -122,6 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setProfile(null);
     setRoles([]);
+    setRolesLoaded(false);
   };
 
   const updatePassword = async (newPassword: string) => {
